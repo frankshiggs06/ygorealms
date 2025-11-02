@@ -22,13 +22,8 @@
         .dp-score {
             text-shadow: 0 0 5px #f6e05e;
         }
-        #pointer {
-            width: 0;
-            height: 0;
-            border-left: 15px solid transparent;
-            border-right: 15px solid transparent;
-            border-bottom: 30px solid #ef4444; /* Apunta hacia abajo */
-        }
+        /* ELIMINADO: #pointer */
+        
         /* Estilos para feedback */
         .feedback-message {
             transition: opacity 0.5s ease-out;
@@ -42,6 +37,7 @@
             align-items: center;
             justify-content: center;
             z-index: 50;
+            transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
         }
         /* Estilo para las imágenes de los packs */
         .pack-image {
@@ -51,11 +47,126 @@
             margin-bottom: 0.75rem;
             border: 2px solid #4a5568; /* Borde gris */
         }
+
+        /* --- NUEVOS ESTILOS PARA JUEGOS --- */
+        .game-card {
+            background-color: #374151; /* gray-700 */
+            border-radius: 0.75rem; /* rounded-xl */
+            padding: 1.5rem; /* p-6 */
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            border: 2px solid #4b5563; /* gray-600 */
+            transition: all 0.3s ease;
+        }
+        .game-card:not(.disabled) {
+            cursor: pointer;
+        }
+        .game-card:not(.disabled):hover {
+            border-color: #ec4899; /* pink-500 */
+            transform: translateY(-5px);
+        }
+        .game-card.disabled {
+            opacity: 0.5;
+            background-color: #1f2937; /* gray-800 */
+        }
+        .game-card-title {
+            font-size: 1.25rem; /* text-xl */
+            font-weight: 700; /* font-bold */
+            color: #f3f4f6; /* gray-100 */
+        }
+        .game-card-description {
+            font-size: 0.875rem; /* text-sm */
+            color: #9ca3af; /* gray-400 */
+            margin-top: 0.5rem; /* mt-2 */
+            margin-bottom: 1rem; /* mb-4 */
+            flex-grow: 1;
+        }
+        
+        /* Estilos para el juego Eternals BetCards */
+        #game-1-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+        .bet-card {
+            aspect-ratio: 2.5 / 3.5;
+            background-color: #4b5563; /* gray-600 */
+            border-radius: 0.5rem; /* rounded-lg */
+            cursor: pointer;
+            border: 3px solid transparent;
+            transition: all 0.3s ease;
+            transform-style: preserve-3d;
+        }
+        .bet-card:hover {
+            border-color: #fcd34d; /* yellow-300 */
+        }
+        .bet-card .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            border-radius: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1rem;
+        }
+        .bet-card .card-front {
+            /* Patrón de dorso de carta Yu-Gi-Oh! (simplificado) */
+            background-color: #1e3a8a; /* blue-800 */
+            background-image: radial-gradient(#fcd34d 20%, transparent 20%),
+                              radial-gradient(#fcd34d 20%, transparent 20%);
+            background-position: 0 0, 50px 50px;
+            background-size: 10px 10px;
+        }
+        .bet-card .card-back {
+            transform: rotateY(180deg);
+        }
+        .bet-card .card-back.win {
+            background-color: #ca8a04; /* yellow-600 */
+            color: #1f2937;
+            border: 2px solid #fde047; /* yellow-200 */
+        }
+        .bet-card .card-back.lose {
+            background-color: #374151; /* gray-700 */
+            color: #9ca3af;
+            border: 2px solid #4b5563; /* gray-600 */
+        }
+
+        .bet-card.is-flipped {
+            transform: rotateY(180deg);
+        }
+        .bet-card.chosen {
+            border-color: #22c55e; /* green-500 */
+            box-shadow: 0 0 20px #22c55e;
+        }
+
+        /* Estilos para botones de apuesta */
+        .bet-button {
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            background-color: #374151; /* gray-700 */
+            border: 2px solid #4b5563; /* gray-600 */
+            color: #d1d5db; /* gray-300 */
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+        .bet-button:hover {
+            background-color: #4b5563; /* gray-600 */
+        }
+        .bet-button.selected {
+            background-color: #3b82f6; /* blue-600 */
+            border-color: #60a5fa; /* blue-400 */
+            color: white;
+            box-shadow: 0 0 10px #3b82f6;
+        }
+
     </style>
 </head>
 <body class="min-h-screen p-4 sm:p-8">
-
-    <!-- ELIMINADO: Modal de Selección de Sesión (Host/Join) -->
 
     <!-- Pantalla de Inicio de Sesión (Se muestra al inicio) -->
     <div id="login-screen" class="modal-overlay flex">
@@ -93,8 +204,8 @@
                     <a href="#packs" class="hover:text-gray-200 transition duration-150 font-medium">Packs</a>
                     <a href="#ranking" class="hover:text-gray-200 transition duration-150 font-medium">Ranking</a>
                     <a href="#admin" class="hover:text-gray-200 transition duration-150 font-medium">Admin</a>
+                    <a href="#juegos" class="hover:text-gray-200 transition duration-150 font-medium">Juegos</a>
                     <a href="#historia" class="hover:text-gray-200 transition duration-150 font-medium">Historia</a>
-                    <a href="#sorteo" class="hover:text-gray-200 transition duration-150 font-medium">Sorteo</a>
                 </nav>
             </div>
             <!-- Muestra Usuario -->
@@ -388,25 +499,79 @@
                 </div>
             </section>
             
-            <!-- Sorteo de Starter Deck -->
-            <section id="sorteo" class="card p-6 rounded-xl text-white">
+            <!-- SECCIÓN DE JUEGOS (NUEVA) -->
+            <section id="juegos" class="card p-6 rounded-xl text-white">
                 <h2 class="text-3xl font-extrabold mb-6 text-pink-400 border-b border-pink-400/50 pb-2">
-                    🎰 Sorteo de Starter Deck
+                    🎰 Sala de Juegos (Apuestas DP)
                 </h2>
                 <p class="text-gray-300 mb-6">
-                    Gira la ruleta para asignar un deck inicial aleatorio a un nuevo duelista: Yugi, Kaiba, Joey o Pegasus.
+                    ¿Te sientes con suerte, duelista? Arriesga tus DP para tener la oportunidad de ganar más. La casa siempre tiene la ventaja.
                 </p>
                 
-                <div class="relative flex flex-col items-center space-y-6 pt-10 pb-8"> 
-                    <div id="pointer" class="absolute z-20 top-10 left-1/2 transform -translate-x-1/2"></div>
-                    <canvas id="rouletteCanvas" width="300" height="300" class="rounded-full bg-gray-900 border-8 border-gray-600 shadow-2xl relative z-10"></canvas>
-                    <div class="flex flex-col items-center space-y-4">
-                        <button id="spinButton" class="bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 px-8 rounded-full transition duration-300 shadow-lg hover:shadow-xl transform hover:scale-105">
-                            ¡Girar Ruleta!
-                        </button>
-                        <div id="resultBox" class="text-center p-4 rounded-lg min-h-[5rem] w-full">
-                            <p id="resultText" class="text-xl font-bold text-yellow-300">Presiona el botón para sortear un Deck.</p>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- Juego 1: Eternals BetCards (Activo) -->
+                    <div id="open-game-1" class="game-card">
+                        <div>
+                            <h3 class="game-card-title text-pink-300">Eternals BetCards</h3>
+                            <p class="game-card-description">
+                                Tres cartas boca abajo. Dos son "Comunes" (pierdes tu apuesta), una es "Rara" (ganas 1.5x tu apuesta). ¿Podrás encontrar la carta ganadora?
+                            </p>
                         </div>
+                        <button class="w-full bg-pink-600 hover:bg-pink-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                            Jugar (1/3 Oportunidad)
+                        </button>
+                    </div>
+
+                    <!-- Juego 2: (Próximamente) -->
+                    <div class="game-card disabled">
+                        <div>
+                            <h3 class="game-card-title text-gray-500">Duelo de Dados</h3>
+                            <p class="game-card-description">
+                                Apuesta si el resultado de dos dados será mayor, menor o igual a 7.
+                            </p>
+                        </div>
+                        <button class="w-full bg-gray-600 text-gray-400 font-bold py-2 px-4 rounded-lg" disabled>
+                            Próximamente...
+                        </button>
+                    </div>
+                    
+                    <!-- Juego 3: (Próximamente) -->
+                    <div class="game-card disabled">
+                        <div>
+                            <h3 class="game-card-title text-gray-500">La Moneda del Milenio</h3>
+                            <p class="game-card-description">
+                                ¿Cara o Cruz? Un simple 50/50, pero la casa se queda con un 10% de comisión en las ganancias.
+                            </p>
+                        </div>
+                        <button class="w-full bg-gray-600 text-gray-400 font-bold py-2 px-4 rounded-lg" disabled>
+                            Próximamente...
+                        </button>
+                    </div>
+
+                    <!-- Juego 4: (Próximamente) -->
+                    <div class="game-card disabled">
+                        <div>
+                            <h3 class="game-card-title text-gray-500">Ruleta de Exodia</h3>
+                            <p class="game-card-description">
+                                Una ruleta con 10 espacios. Cae en "El Prohibido" para ganar el pozo gordo.
+                            </p>
+                        </div>
+                        <button class="w-full bg-gray-600 text-gray-400 font-bold py-2 px-4 rounded-lg" disabled>
+                            Próximamente...
+                        </button>
+                    </div>
+                    
+                    <!-- Juego 5: (Próximamente) -->
+                    <div class="game-card disabled">
+                        <div>
+                            <h3 class="game-card-title text-gray-500">Jackpot del Mago Oscuro</h3>
+                            <p class="game-card-description">
+                                Una máquina tragamonedas clásica. ¿Podrás alinear tres Magos Oscuros?
+                            </p>
+                        </div>
+                        <button class="w-full bg-gray-600 text-gray-400 font-bold py-2 px-4 rounded-lg" disabled>
+                            Próximamente...
+                        </button>
                     </div>
                 </div>
             </section>
@@ -426,7 +591,7 @@
         </main>
 
         <!-- Modal de Apertura de Pack -->
-        <div id="pack-opening-modal" class="modal-overlay hidden">
+        <div id="pack-opening-modal" class="modal-overlay hidden opacity-0 visibility-hidden">
             <div class="bg-gray-800 text-white rounded-xl shadow-2xl p-6 w-full max-w-md border border-gray-700">
                 <h3 class="text-2xl font-bold mb-4 text-center text-yellow-300">¡Pack Adquirido!</h3>
                 <p class="text-center text-gray-400 text-sm mb-4">¡Estas son las cartas que obtuviste! (Nombres en Inglés para YGOPro):</p>
@@ -440,6 +605,54 @@
                 </button>
             </div>
         </div>
+
+        <!-- NUEVO: Modal de Juego 1: Eternals BetCards -->
+        <div id="game-1-modal" class="modal-overlay hidden opacity-0 visibility-hidden">
+            <div class="bg-gray-800 text-white rounded-xl shadow-2xl p-6 w-full max-w-lg border border-gray-700">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-2xl font-bold text-center text-pink-300">Eternals BetCards</h3>
+                    <button id="game-1-close-button" class="text-gray-400 hover:text-white">&times;</button>
+                </div>
+                
+                <!-- Paso 1: Seleccionar Apuesta -->
+                <div id="game-1-step-1">
+                    <p class="text-center text-gray-300 mb-4">Selecciona tu apuesta. 1 de 3 cartas es la ganadora (Premio: 1.5x).</p>
+                    <div id="game-1-bet-options" class="flex justify-center gap-2 flex-wrap mb-4">
+                        <button class="bet-button" data-bet="50">50 DP</button>
+                        <button class="bet-button" data-bet="100">100 DP</button>
+                        <button class="bet-button" data-bet="150">150 DP</button>
+                        <button class="bet-button" data-bet="200">200 DP</button>
+                        <button class="bet-button" data-bet="500">500 DP</button>
+                    </div>
+                </div>
+
+                <!-- Paso 2: Elegir Carta -->
+                <div id="game-1-step-2" class="hidden">
+                    <p class="text-center text-gray-300 mb-4">¡Apuesta seleccionada! Ahora, elige tu carta. ¡Suerte!</p>
+                </div>
+
+                <!-- El Juego -->
+                <div id="game-1-grid" class="opacity-50 pointer-events-none">
+                    <div class="bet-card" data-index="0">
+                        <div class="card-face card-front"></div>
+                        <div class="card-face card-back"></div>
+                    </div>
+                    <div class="bet-card" data-index="1">
+                        <div class="card-face card-front"></div>
+                        <div class="card-face card-back"></div>
+                    </div>
+                    <div class="bet-card" data-index="2">
+                        <div class="card-face card-front"></div>
+                        <div class="card-face card-back"></div>
+                    </div>
+                </div>
+
+                <!-- Feedback -->
+                <p id="game-1-feedback" class_="text-center text-yellow-300 h-5 mt-4"></p>
+                
+            </div>
+        </div>
+
 
         <footer class="mt-12 text-center text-gray-500 text-sm">
             <p>Hecho para el seguimiento de tu duelo.</p>
@@ -548,6 +761,19 @@
             document.getElementById('buy-pack-6')
         ];
         
+        // --- NUEVOS Elementos de Juego ---
+        const openGame1Button = document.getElementById('open-game-1');
+        const game1Modal = document.getElementById('game-1-modal');
+        const game1CloseButton = document.getElementById('game-1-close-button');
+        const game1BetOptions = document.getElementById('game-1-bet-options');
+        const game1Grid = document.getElementById('game-1-grid');
+        const game1Cards = game1Grid.querySelectorAll('.bet-card');
+        const game1Feedback = document.getElementById('game-1-feedback');
+        const game1Step1 = document.getElementById('game-1-step-1');
+        const game1Step2 = document.getElementById('game-1-step-2');
+        let isGame1Spinning = false;
+        let game1SelectedBet = 0;
+
         // --- Definición de Cartas en Packs Personalizados ---
         const customPacks = {
             "buy-pack-1": {
@@ -588,17 +814,10 @@
                 if (user) {
                     userId = user.uid;
                     
-                    // --- CORRECCIÓN ---
-                    // La ruta a un DOCUMENTO debe tener un número par de segmentos.
-                    // La ruta a una COLECCIÓN debe tener un número impar de segmentos.
-                    // "torneo" = colección (1)
-                    // "torneo/torneo-data" = documento (2)
-                    // "torneo/torneo-data/players" = colección (3) - ¡CORRECTO!
                     const basePath = `torneo/torneo-data`; 
                     dbPlayersRef = collection(db, `${basePath}/players`);
                     dbHistoryRef = collection(db, `${basePath}/history`);
 
-                    // Quien sea que abra la app, revisará si los datos existen
                     await seedInitialData();
                     initPlayersListener();
                     initHistoryListener();
@@ -607,7 +826,6 @@
                     dbLoadingFeedback.className = "text-green-400 text-sm h-5 text-center";
                 } else {
                     try {
-                        // Inicia sesión anónimamente. No necesitamos tokens especiales.
                         await signInAnonymously(auth);
                     } catch (error) {
                         console.error("Error de autenticación:", error);
@@ -619,7 +837,6 @@
         }
 
         // --- LÓGICA DE DATOS INICIALES (SEEDING) ---
-        // Cualquiera puede crear los datos si no existen
         async function seedInitialData() {
             const playerQuery = query(dbPlayersRef);
             const snapshot = await getDocs(playerQuery);
@@ -765,6 +982,8 @@
                 case 'buy': return { bg: 'border-l-4 border-blue-500', text: 'text-blue-300' };
                 case 'admin': return { bg: 'border-l-4 border-indigo-500', text: 'text-indigo-300' };
                 case 'penalty': return { bg: 'border-l-4 border-red-500', text: 'text-red-300' };
+                case 'game_win': return { bg: 'border-l-4 border-pink-500', text: 'text-pink-300' };
+                case 'game_lose': return { bg: 'border-l-4 border-gray-500', text: 'text-gray-300' };
                 default: return { bg: '', text: 'text-gray-100' };
             }
         }
@@ -1020,12 +1239,12 @@
                 li.textContent = cardName;
                 packCardList.appendChild(li);
             });
-            packOpeningModal.classList.remove('hidden');
+            packOpeningModal.classList.remove('hidden', 'opacity-0', 'visibility-hidden');
             modalClosePackButton.focus();
         }
 
         modalClosePackButton.addEventListener('click', () => {
-            packOpeningModal.classList.add('hidden');
+            packOpeningModal.classList.add('hidden', 'opacity-0', 'visibility-hidden');
         });
 
         // --- LÓGICA DE COMPRA DE PACKS (SIMPLIFICADA) ---
@@ -1084,104 +1303,149 @@
             });
         });
 
-        // --- LÓGICA DE LA RULETA ---
-        const canvas = document.getElementById('rouletteCanvas');
-        const ctx = canvas.getContext('2d');
-        const spinButton = document.getElementById('spinButton');
-        const resultText = document.getElementById('resultText');
-        
-        const decks = [
-            { name: "YUGI", color: "#a80000" },
-            { name: "KAIBA", color: "#3182ce" },
-            { name: "JOEY", color: "#e66000" },
-            { name: "PEGASUS", color: "#48bb78" }
-        ];
-        const numSegments = decks.length;
-        const arcSize = 2 * Math.PI / numSegments;
-        const centerX = canvas.width / 2;
-        const centerY = canvas.height / 2;
-        let currentRotation = 0;
-        let isSpinning = false;
-        
-        function drawRoulette() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.save();
-            ctx.translate(centerX, centerY);
-            ctx.rotate(currentRotation);
-            decks.forEach((deck, i) => {
-                const startAngle = i * arcSize;
-                const endAngle = (i + 1) * arcSize;
-                ctx.beginPath();
-                ctx.arc(0, 0, centerX, startAngle, endAngle);
-                ctx.lineTo(0, 0);
-                ctx.closePath();
-                ctx.fillStyle = deck.color;
-                ctx.fill();
-                ctx.save();
-                ctx.rotate(startAngle + arcSize / 2);
-                ctx.fillStyle = 'white';
-                ctx.font = 'bold 18px Inter';
-                ctx.textAlign = 'right';
-                ctx.fillText(deck.name, centerX * 0.75, 5); 
-                ctx.restore();
+        // --- LÓGICA DE JUEGOS (NUEVA) ---
+
+        // Abrir/Cerrar modal del juego 1
+        function resetGame1Modal() {
+            game1Feedback.textContent = '';
+            game1SelectedBet = 0;
+            isGame1Spinning = false;
+            
+            // Ocultar paso 2, mostrar paso 1
+            game1Step1.classList.remove('hidden');
+            game1Step2.classList.add('hidden');
+            
+            // Deseleccionar botones de apuesta
+            game1BetOptions.querySelectorAll('.bet-button').forEach(b => b.classList.remove('selected'));
+            
+            // Bloquear grid de cartas
+            game1Grid.classList.add('opacity-50', 'pointer-events-none');
+            
+            // Voltear todas las cartas
+            game1Cards.forEach(card => {
+                card.classList.remove('is-flipped', 'chosen');
+                const back = card.querySelector('.card-back');
+                back.classList.remove('win', 'lose');
+                back.textContent = '';
             });
-            ctx.restore();
-            ctx.beginPath();
-            ctx.arc(centerX, centerY, 30, 0, 2 * Math.PI);
-            ctx.fillStyle = '#1a202c'; 
-            ctx.fill();
-            ctx.lineWidth = 3;
-            ctx.strokeStyle = '#f6e05e';
-            ctx.stroke();
         }
         
-        function spinRoulette() {
-            if (isSpinning) return;
-            isSpinning = true;
-            spinButton.disabled = true;
-            resultText.textContent = "¡Girando el Disco de Duelo...";
-            
-            const winningIndex = Math.floor(Math.random() * numSegments);
-            const winningDeck = decks[winningIndex].name;
-            const pointerAngle = 3 * Math.PI / 2;
-            const targetSegmentCenterAngle = winningIndex * arcSize + arcSize / 2;
-            let rotationToAlign = (pointerAngle - targetSegmentCenterAngle);
-            const fullRotations = 5; 
-            const spinDuration = 5000;
-            const startRotation = currentRotation;
-            const normalizedCurrentRotation = startRotation % (2 * Math.PI);
-            
-            let normalizedRotationToAlign = rotationToAlign % (2 * Math.PI);
-            if (normalizedRotationToAlign < 0) normalizedRotationToAlign += 2 * Math.PI;
-            
-            let neededDelta = normalizedRotationToAlign - normalizedCurrentRotation;
-            if (neededDelta < 0) neededDelta += 2 * Math.PI;
-
-            const totalRotationChange = neededDelta + (2 * Math.PI * fullRotations); 
-            let startTimestamp;
-
-            function animateSpin(timestamp) {
-                if (!startTimestamp) startTimestamp = timestamp;
-                const elapsed = timestamp - startTimestamp;
-                const progress = Math.min(elapsed / spinDuration, 1);
-                const easing = 1 - Math.pow(1 - progress, 3); 
-                currentRotation = startRotation + totalRotationChange * easing;
-                drawRoulette();
-                
-                if (progress < 1) {
-                    requestAnimationFrame(animateSpin);
-                } else {
-                    isSpinning = false;
-                    spinButton.disabled = false;
-                    resultText.textContent = `¡Felicidades! Se sorteó el Deck ${winningDeck}.`;
-                    currentRotation = normalizedRotationToAlign;
-                }
+        openGame1Button.addEventListener('click', () => {
+            if (!loggedInPlayerId) {
+                alert("Debes iniciar sesión para jugar."); // Usar un modal sería mejor, pero alert es rápido
+                return;
             }
-            requestAnimationFrame(animateSpin);
-        }
+            resetGame1Modal();
+            game1Modal.classList.remove('hidden', 'opacity-0', 'visibility-hidden');
+        });
         
-        drawRoulette();
-        spinButton.addEventListener('click', spinRoulette);
+        game1CloseButton.addEventListener('click', () => {
+            game1Modal.classList.add('hidden', 'opacity-0', 'visibility-hidden');
+        });
+
+        // Seleccionar apuesta
+        game1BetOptions.addEventListener('click', (e) => {
+            if (isGame1Spinning) return;
+            if (e.target.classList.contains('bet-button')) {
+                // Quitar selección anterior
+                game1BetOptions.querySelectorAll('.bet-button').forEach(b => b.classList.remove('selected'));
+                // Añadir nueva selección
+                e.target.classList.add('selected');
+                game1SelectedBet = parseInt(e.target.dataset.bet);
+                
+                // Activar el grid
+                game1Grid.classList.remove('opacity-50', 'pointer-events-none');
+                game1Step1.classList.add('hidden');
+                game1Step2.classList.remove('hidden');
+                game1Feedback.textContent = '¡Elige tu carta!';
+            }
+        });
+
+        // Jugar (al hacer clic en una carta)
+        game1Cards.forEach(card => {
+            card.addEventListener('click', (e) => {
+                handleBetCardClick(e.currentTarget);
+            });
+        });
+
+        async function handleBetCardClick(chosenCard) {
+            if (isGame1Spinning) return;
+            if (game1SelectedBet === 0) {
+                game1Feedback.textContent = 'Primero selecciona una apuesta.';
+                return;
+            }
+            
+            const player = localPlayersCache.get(loggedInPlayerId);
+            if (player.dp < game1SelectedBet) {
+                game1Feedback.textContent = `DP insuficientes. Necesitas ${game1SelectedBet} DP.`;
+                return;
+            }
+
+            isGame1Spinning = true;
+            game1Feedback.textContent = '...';
+            const chosenIndex = parseInt(chosenCard.dataset.index);
+
+            // 1. Determinar resultado (1 carta ganadora, 2 perdedoras)
+            const winIndex = Math.floor(Math.random() * 3);
+            const payoutMultiplier = (chosenIndex === winIndex) ? 1.5 : 0;
+            const didWin = (chosenIndex === winIndex);
+            
+            const dpChange = (game1SelectedBet * payoutMultiplier) - game1SelectedBet;
+            const newDp = player.dp + dpChange;
+
+            // 2. Mostrar revelación de cartas
+            game1Cards.forEach((card, index) => {
+                const back = card.querySelector('.card-back');
+                if (index === winIndex) {
+                    back.classList.add('win');
+                    back.textContent = 'RARA (x1.5)';
+                } else {
+                    back.classList.add('lose');
+                    back.textContent = 'COMÚN (x0)';
+                }
+                
+                setTimeout(() => {
+                    card.classList.add('is-flipped');
+                }, index * 200); // Volteo escalonado
+            });
+            
+            chosenCard.classList.add('chosen');
+
+            // 3. Actualizar Base de Datos (Firebase)
+            try {
+                const playerRef = doc(dbPlayersRef, loggedInPlayerId);
+                await updateDoc(playerRef, { dp: newDp });
+
+                const historyEntry = {
+                    text: `${player.name} jugó Eternals BetCards. Apostó ${game1SelectedBet} DP y ${didWin ? `ganó ${game1SelectedBet * 1.5} DP` : 'perdió'}. (Neto: ${dpChange} DP)`,
+                    timestamp: Date.now(),
+                    type: didWin ? 'game_win' : 'game_lose'
+                };
+                await addDoc(dbHistoryRef, historyEntry);
+
+                // 4. Mostrar resultado y reiniciar
+                setTimeout(() => {
+                    if (didWin) {
+                        game1Feedback.textContent = `¡Ganaste! Recibes ${game1SelectedBet * 1.5} DP (Beneficio: ${dpChange} DP)`;
+                    } else {
+                        game1Feedback.textContent = `¡Perdiste! Pierdes ${game1SelectedBet} DP.`;
+                    }
+                    
+                    // Resetear el juego después de 3 segundos
+                    setTimeout(() => {
+                        resetGame1Modal();
+                    }, 3000);
+                    
+                }, 1000); // Esperar a que las cartas se volteen
+
+            } catch (error) {
+                console.error("Error al jugar:", error);
+                game1Feedback.textContent = 'Error al conectar con la base de datos.';
+                isGame1Spinning = false;
+            }
+        }
+
+        // --- ELIMINADO: LÓGICA DE LA RULETA ---
 
         // --- INICIAR LA APLICACIÓN ---
         initializeAppWithAuth();
