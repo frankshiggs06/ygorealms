@@ -1694,7 +1694,3 @@ document.addEventListener('DOMContentLoaded', () => {
     initLogin();
     initializeAppWithAuth();
 });
-
-
-
-
