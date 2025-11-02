@@ -1,0 +1,1173 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seguimiento de Duelistas - Yu-Gi-Oh!</title>
+    <!-- Carga de Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a202c; /* Fondo oscuro */
+        }
+        .card {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            background-color: #2d3748; /* Color de tarjeta oscuro */
+        }
+        .header-bg {
+            background-color: #3182ce; /* Azul vibrante */
+        }
+        .dp-score {
+            text-shadow: 0 0 5px #f6e05e;
+        }
+        #pointer {
+            width: 0;
+            height: 0;
+            border-left: 15px solid transparent;
+            border-right: 15px solid transparent;
+            border-bottom: 30px solid #ef4444; /* Apunta hacia abajo */
+        }
+        /* Estilos para feedback */
+        .feedback-message {
+            transition: opacity 0.5s ease-out;
+        }
+        /* Estilos para el modal */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+        }
+        /* Estilo para las imágenes de los packs */
+        .pack-image {
+            aspect-ratio: 1 / 1;
+            object-fit: cover;
+            border-radius: 0.25rem;
+            margin-bottom: 0.75rem;
+            border: 2px solid #4a5568; /* Borde gris */
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4 sm:p-8">
+
+    <!-- ELIMINADO: Modal de Selección de Sesión (Host/Join) -->
+
+    <!-- Pantalla de Inicio de Sesión (Se muestra al inicio) -->
+    <div id="login-screen" class="modal-overlay flex">
+        <div class="card p-6 rounded-xl text-white w-full max-w-sm">
+            <h2 class="text-3xl font-extrabold mb-6 text-center text-yellow-400">Iniciar Sesión</h2>
+            <div class="space-y-4">
+                <div>
+                    <label for="login-username" class="block text-sm font-medium text-gray-300 mb-2">Nombre de Usuario:</label>
+                    <input type="text" id="login-username" placeholder="Tu nombre de duelista" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label for="login-password" class="block text-sm font-medium text-gray-300 mb-2">Contraseña:</label>
+                    <input type="password" id="login-password" placeholder="Tu contraseña" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <button id="login-button" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                    Entrar al Torneo
+                </button>
+                <p id="login-feedback" class="text-red-400 text-sm h-5 text-center"></p>
+                <p id="db-loading-feedback" class="text-yellow-300 text-sm h-5 text-center">Conectando a la base de datos...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contenido principal de la aplicación (oculto por defecto) -->
+    <div id="app-content" class="hidden">
+
+        <!-- Encabezado Fijo y Navegación -->
+        <header class="header-bg p-4 rounded-lg mb-8 shadow-xl text-white">
+            <div class="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center">
+                <h1 class="text-3xl font-bold tracking-tight mb-2 sm:mb-0">
+                    Torneo de Duelistas 🃏
+                </h1>
+                <nav class="space-x-4">
+                    <a href="#usuarios" class="hover:text-gray-200 transition duration-150 font-medium">Usuarios</a>
+                    <a href="#packs" class="hover:text-gray-200 transition duration-150 font-medium">Packs</a>
+                    <a href="#ranking" class="hover:text-gray-200 transition duration-150 font-medium">Ranking</a>
+                    <a href="#admin" class="hover:text-gray-200 transition duration-150 font-medium">Admin</a>
+                    <a href="#historia" class="hover:text-gray-200 transition duration-150 font-medium">Historia</a>
+                    <a href="#sorteo" class="hover:text-gray-200 transition duration-150 font-medium">Sorteo</a>
+                </nav>
+            </div>
+            <!-- Muestra Usuario -->
+            <div class="max-w-6xl mx-auto text-center mt-2 space-y-1">
+                <span class="text-xs text-gray-200 block">Usuario Conectado: <strong id="logged-in-user-display" class="font-mono text-yellow-300">Ninguno</strong></span>
+            </div>
+        </header>
+
+        <main class="max-w-6xl mx-auto space-y-12">
+
+            <!-- Sección 1: Usuarios (Tabla de Puntos DP) -->
+            <section id="usuarios" class="card p-6 rounded-xl text-white">
+                <h2 class="text-3xl font-extrabold mb-6 text-yellow-400 border-b border-yellow-400/50 pb-2">
+                    👥 Usuarios y Puntuación DP
+                </h2>
+
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-600">
+                        <thead class="bg-gray-700/50">
+                            <tr>
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-300">
+                                    Jugador
+                                </th>
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-300">
+                                    Puntos DP
+                                </th>
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-300">
+                                    Deck Inicial
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody id="user-table-body" class="divide-y divide-gray-700">
+                            <tr>
+                                <td colspan="3" class="px-4 py-4 text-center text-gray-400">Cargando jugadores...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <p class="mt-6 text-sm text-gray-400">
+                    *Los Puntos DP (Duelist Points) se usan para adquirir nuevos packs y mejorar tu colección.
+                </p>
+            </section>
+
+            <!-- Sección 2: Packs (Tienda/Adquisición) -->
+            <section id="packs" class="card p-6 rounded-xl text-white">
+                <h2 class="text-3xl font-extrabold mb-6 text-blue-400 border-b border-blue-400/50 pb-2">
+                    🎁 Packs de Cartas
+                </h2>
+                
+                <div class="mb-6">
+                    <p class="text-lg text-gray-300">Estás comprando como: <strong id="pack-buyer-display" class="text-yellow-300">...</strong></p>
+                    <p id="purchase-feedback" class="text-yellow-300 text-sm mt-2 h-5 feedback-message opacity-0"></p>
+                </div>
+
+                <!-- Contenedor de Grid para los packs -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    
+                    <!-- Pack 1: Poder del Mago (Yugi/Pegasus) -->
+                    <div class="bg-gray-700 p-4 rounded-lg border-2 border-gray-600 hover:border-purple-500 transition duration-300 flex flex-col">
+                        <img src="https://placehold.co/300x300/6b21a8/ffffff?text=Poder+del+Mago" alt="Poder del Mago" class="pack-image">
+                        <h3 class="text-xl font-bold mb-2 text-purple-300">Poder del Mago</h3>
+                        <p class="text-3xl font-extrabold text-yellow-400 mb-3">150 DP</p>
+                        <ul class="text-sm space-y-1 text-gray-400 flex-grow">
+                            <li>Contiene 5 Cartas.</li>
+                            <li>Soporte para Decks de Hechiceros y Rituales.</li>
+                            <li>Ideal para Yugi y Pegasus.</li>
+                        </ul>
+                        <button id="buy-pack-1" data-cost="150" data-name="Poder del Mago" class="mt-4 w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 disabled:opacity-50">
+                            Comprar (150 DP)
+                        </button>
+                    </div>
+                    
+                    <!-- Pack 2: Furia del Dragón (Kaiba/Joey) -->
+                    <div class="bg-gray-700 p-4 rounded-lg border-2 border-gray-600 hover:border-blue-500 transition duration-300 flex flex-col">
+                        <img src="https://placehold.co/300x300/1d4ed8/ffffff?text=Furia+del+Dragón" alt="Furia del Dragón" class="pack-image">
+                        <h3 class="text-xl font-bold mb-2 text-blue-300">Furia del Dragón</h3>
+                        <p class="text-3xl font-extrabold text-yellow-400 mb-3">150 DP</p>
+                        <ul class="text-sm space-y-1 text-gray-400 flex-grow">
+                            <li>Contiene 5 Cartas.</li>
+                            <li>Soporte para Decks de Dragones y Guerreros.</li>
+                            <li>Ideal para Kaiba y Joey.</li>
+                        </ul>
+                        <button id="buy-pack-2" data-cost="150" data-name="Furia del Dragón" class="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 disabled:opacity-50">
+                            Comprar (150 DP)
+                        </button>
+                    </div>
+
+                    <!-- Pack 3: Arsenal del Duelista (Staples) -->
+                    <div class="bg-gray-700 p-4 rounded-lg border-2 border-gray-600 hover:border-yellow-500 transition duration-300 flex flex-col">
+                        <img src="https://placehold.co/300x300/ca8a04/ffffff?text=Arsenal+del+Duelista" alt="Arsenal del Duelista" class="pack-image">
+                        <h3 class="text-xl font-bold mb-2 text-yellow-300">Arsenal del Duelista</h3>
+                        <p class="text-3xl font-extrabold text-yellow-400 mb-3">300 DP</p>
+                        <ul class="text-sm space-y-1 text-gray-400 flex-grow">
+                            <li>Contiene 5 Cartas.</li>
+                            <li>Cartas "Staple" genéricas de Magia/Trampa.</li>
+                            <li>Garantiza 1 Súper Rara.</li>
+                        </ul>
+                        <button id="buy-pack-3" data-cost="300" data-name="Arsenal del Duelista" class="mt-4 w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 disabled:opacity-50">
+                            Comprar (300 DP)
+                        </button>
+                    </div>
+
+                    <!-- PACK 4: Tesoro del Faraón (Alto Riesgo) -->
+                    <div class="bg-gray-700 p-4 rounded-lg border-2 border-gray-600 hover:border-amber-300 transition duration-300 flex flex-col">
+                        <img src="https://placehold.co/300x300/a16207/ffffff?text=Tesoro+del+Faraón" alt="Tesoro del Faraón" class="pack-image">
+                        <h3 class="text-xl font-bold mb-2 text-amber-300">Tesoro del Faraón</h3>
+                        <p class="text-3xl font-extrabold text-yellow-400 mb-3">500 DP</p>
+                        <ul class="text-sm space-y-1 text-gray-400 flex-grow">
+                            <li>Contiene 5 Cartas.</li>
+                            <li>Alto riesgo, alta recompensa.</li>
+                            <li>Posibilidad de Staples de poder (SR) o cartas "Exodia".</li>
+                        </ul>
+                        <button id="buy-pack-4" data-cost="500" data-name="Tesoro del Faraón" class="mt-4 w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 disabled:opacity-50">
+                            Comprar (500 DP)
+                        </button>
+                    </div>
+
+                    <!-- PACK 5: Legado del Ojo Azul (Poder Kaiba) -->
+                    <div class="bg-gray-700 p-4 rounded-lg border-2 border-gray-600 hover:border-cyan-300 transition duration-300 flex flex-col">
+                        <img src="https://placehold.co/300x300/0e7490/ffffff?text=Legado+del+Ojo+Azul" alt="Legado del Ojo Azul" class="pack-image">
+                        <h3 class="text-xl font-bold mb-2 text-cyan-300">Legado del Ojo Azul</h3>
+                        <p class="text-3xl font-extrabold text-yellow-400 mb-3">1000 DP</p>
+                        <ul class="text-sm space-y-1 text-gray-400 flex-grow">
+                            <li>Contiene 7 Cartas.</li>
+                            <li>Cartas de poder enfocadas en Dragones y Máquinas.</li>
+                            <li>Garantiza 2 Súper Raras.</li>
+                        </ul>
+                        <button id="buy-pack-5" data-cost="1000" data-name="Legado del Ojo Azul" class="mt-4 w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 disabled:opacity-50">
+                            Comprar (1000 DP)
+                        </button>
+                    </div>
+
+                    <!-- PACK 6: El Cofre Prohibido (Definitivo) -->
+                    <div class="bg-gray-700 p-4 rounded-lg border-2 border-gray-600 hover:border-red-500 transition duration-300 flex flex-col">
+                        <img src="https://placehold.co/300x300/b91c1c/ffffff?text=El+Cofre+Prohibido" alt="El Cofre Prohibido" class="pack-image">
+                        <h3 class="text-xl font-bold mb-2 text-red-300">El Cofre Prohibido</h3>
+                        <p class="text-3xl font-extrabold text-yellow-400 mb-3">1500 DP</p>
+                        <ul class="text-sm space-y-1 text-gray-400 flex-grow">
+                            <li>Contiene 7 Cartas.</li>
+                            <li>Solo contiene cartas Raras, Súper Raras y Ultra Raras.</li>
+                            <li>Garantiza 1 Ultra Rara.</li>
+                        </ul>
+                        <button id="buy-pack-6" data-cost="1500" data-name="El Cofre Prohibido" class="mt-4 w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 disabled:opacity-50">
+                            Comprar (1500 DP)
+                        </button>
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- Ranking Semanal -->
+            <section id="ranking" class="card p-6 rounded-xl text-white">
+                <h2 class="text-3xl font-extrabold mb-6 text-green-400 border-b border-green-400/50 pb-2">
+                    🏆 Ranking Semanal
+                </h2>
+                <p class="text-gray-300 mb-6">Jugadores ordenados por victorias esta semana (Lunes a Domingo).</p>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-600">
+                        <thead class="bg-gray-700/50">
+                            <tr>
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-300">Pos.</th>
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-300">Jugador</th>
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-300">Victorias Semanales</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ranking-table-body" class="divide-y divide-gray-700">
+                            <tr><td colspan="3" class="px-4 py-4 text-center text-gray-400">Cargando ranking...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Panel de Administración -->
+            <section id="admin" class="card p-6 rounded-xl text-white">
+                <h2 class="text-3xl font-extrabold mb-6 text-indigo-400 border-b border-indigo-400/50 pb-2">
+                    ⚙️ Panel de Administración
+                </h2>
+
+                <!-- Bloqueo de Contraseña -->
+                <div id="admin-lock-screen" class="space-y-4 text-center p-4 bg-gray-700/50 rounded-lg border border-gray-600">
+                    <label for="admin-password" class="block text-lg font-medium text-gray-300 mb-2">Se requiere contraseña de administrador:</label>
+                    <input type="password" id="admin-password" placeholder="Contraseña" class="w-full max-w-sm mx-auto bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <button id="admin-unlock-button" class="w-full max-w-sm mx-auto bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300" disabled>
+                        Desbloquear
+                    </button>
+                    <p id="admin-lock-feedback" class="text-red-400 text-sm mt-2 h-5"></p>
+                    <p class="text-xs text-gray-400">Debes iniciar sesión como usuario primero.</p>
+                </div>
+
+                <!-- Contenido del Admin (oculto por defecto) -->
+                <div id="admin-content" class="hidden">
+                    <!-- Formulario para Registrar Duelos -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                        <div>
+                            <h3 class="text-xl font-bold mb-3 text-gray-100">Registrar Duelo</h3>
+                            <div class="space-y-4">
+                                <div>
+                                    <label for="admin-player-select" class="block text-sm font-medium text-gray-300 mb-2">Ganador:</label>
+                                    <select id="admin-player-select" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                        <option>Cargando...</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="admin-player-select-loser" class="block text-sm font-medium text-gray-300 mb-2">Perdedor:</label>
+                                    <select id="admin-player-select-loser" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                        <option>Cargando...</option>
+                                    </select>
+                                </div>
+                                <div class="flex items-center">
+                                    <input id="admin-surrender-checkbox" type="checkbox" class="h-4 w-4 bg-gray-700 border-gray-600 text-indigo-600 focus:ring-indigo-500 rounded">
+                                    <label for="admin-surrender-checkbox" class="ml-2 block text-sm text-gray-300">
+                                        El perdedor se rindió (Surrender)
+                                    </label>
+                                </div>
+                                <p class="text-xs text-gray-400 -mt-2 ml-6">(+50 DP extra al ganador, -50 DP al perdedor)</p>
+                                
+                                <div class="flex items-center">
+                                    <input id="admin-flawless-checkbox" type="checkbox" class="h-4 w-4 bg-gray-700 border-gray-600 text-indigo-600 focus:ring-indigo-500 rounded">
+                                    <label for="admin-flawless-checkbox" class="ml-2 block text-sm text-gray-300">
+                                        Ganador no perdió LP (Flawless)
+                                    </label>
+                                </div>
+                                <p class="text-xs text-gray-400 -mt-2 ml-6">(+100 DP extra al ganador)</p>
+
+                                <button id="admin-submit-button" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 mt-4">
+                                    Registrar Duelo
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Formulario para Añadir Nuevo Jugador -->
+                        <div>
+                            <h3 class="text-xl font-bold mb-3 text-gray-100">Añadir Nuevo Jugador</h3>
+                            <div class="space-y-4">
+                                <div>
+                                    <label for="admin-new-player-name" class="block text-sm font-medium text-gray-300 mb-2">Nombre:</label>
+                                    <input type="text" id="admin-new-player-name" placeholder="Nombre del Duelista" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                </div>
+                                <div>
+                                    <label for="admin-new-player-deck" class="block text-sm font-medium text-gray-300 mb-2">Deck Inicial:</label>
+                                    <select id="admin-new-player-deck" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                        <option>Yugi</option>
+                                        <option>Kaiba</option>
+                                        <option>Joey</option>
+                                        <option>Pegasus</option>
+                                        <option>Otro</option>
+                                    </select>
+                                </div>
+                                <button id="admin-add-player-button" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                                    Añadir Jugador
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <p id="admin-feedback" class="text-center text-yellow-300 text-sm mt-2 h-5 feedback-message opacity-0"></p>
+
+                    <!-- Gestión Semanal -->
+                    <hr class="border-gray-600 my-8">
+                    <div>
+                        <h3 class="text-xl font-bold mb-3 text-gray-100">Gestión Semanal</h3>
+                        <p class="text-sm text-gray-400 mb-4">
+                            Al cerrar la semana, se anunciará al ganador en la historia y se reiniciarán todas las victorias semanales a 0.
+                        </p>
+                        <button id="admin-reset-week-button" class="w-full max-w-sm mx-auto bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                            Cerrar Semana y Reiniciar Ranking
+                        </button>
+                        <p id="admin-week-feedback" class="text-center text-yellow-300 text-sm mt-2 h-5 feedback-message opacity-0"></p>
+                    </div>
+
+                    <!-- Inventario de Cartas Adquiridas -->
+                    <hr class="border-gray-600 my-8">
+                    <div>
+                        <h3 class="text-xl font-bold mb-3 text-gray-100">Inventario de Cartas</h3>
+                        <p class="text-sm text-gray-400 mb-4">
+                            Selecciona un jugador para ver todas las cartas que ha adquirido en los packs.
+                        </p>
+                        <div>
+                            <label for="admin-card-inventory-select" class="block text-sm font-medium text-gray-300 mb-2">Seleccionar Jugador:</label>
+                            <select id="admin-card-inventory-select" class="w-full max-w-sm bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <option>Cargando...</option>
+                            </select>
+                        </div>
+                        
+                        <h4 class="text-lg font-semibold mt-6 mb-3 text-gray-200">Colección:</h4>
+                        <ul id="admin-card-inventory-list" class="space-y-2 bg-gray-900 p-4 rounded-lg border border-gray-600 min-h-[150px] max-h-60 overflow-y-auto">
+                            <li class="text-gray-400">Selecciona un jugador para ver su inventario.</li>
+                        </ul>
+                    </div>
+
+                </div>
+            </section>
+            
+            <!-- Sorteo de Starter Deck -->
+            <section id="sorteo" class="card p-6 rounded-xl text-white">
+                <h2 class="text-3xl font-extrabold mb-6 text-pink-400 border-b border-pink-400/50 pb-2">
+                    🎰 Sorteo de Starter Deck
+                </h2>
+                <p class="text-gray-300 mb-6">
+                    Gira la ruleta para asignar un deck inicial aleatorio a un nuevo duelista: Yugi, Kaiba, Joey o Pegasus.
+                </p>
+                
+                <div class="relative flex flex-col items-center space-y-6 pt-10 pb-8"> 
+                    <div id="pointer" class="absolute z-20 top-10 left-1/2 transform -translate-x-1/2"></div>
+                    <canvas id="rouletteCanvas" width="300" height="300" class="rounded-full bg-gray-900 border-8 border-gray-600 shadow-2xl relative z-10"></canvas>
+                    <div class="flex flex-col items-center space-y-4">
+                        <button id="spinButton" class="bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 px-8 rounded-full transition duration-300 shadow-lg hover:shadow-xl transform hover:scale-105">
+                            ¡Girar Ruleta!
+                        </button>
+                        <div id="resultBox" class="text-center p-4 rounded-lg min-h-[5rem] w-full">
+                            <p id="resultText" class="text-xl font-bold text-yellow-300">Presiona el botón para sortear un Deck.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Historia de Eventos -->
+            <section id="historia" class="card p-6 rounded-xl text-white">
+                <h2 class="text-3xl font-extrabold mb-6 text-green-400 border-b border-green-400/50 pb-2">
+                    📜 Historia de Puntos y Eventos
+                </h2>
+                <p class="text-gray-300 mb-6">Registro de todos los cambios importantes en el progreso de los duelistas (en tiempo real).</p>
+
+                <ul id="history-list" class="space-y-4">
+                    <li class="bg-gray-700 p-3 rounded-lg text-center text-gray-400">Cargando historial...</li>
+                </ul>
+            </section>
+
+        </main>
+
+        <!-- Modal de Apertura de Pack -->
+        <div id="pack-opening-modal" class="modal-overlay hidden">
+            <div class="bg-gray-800 text-white rounded-xl shadow-2xl p-6 w-full max-w-md border border-gray-700">
+                <h3 class="text-2xl font-bold mb-4 text-center text-yellow-300">¡Pack Adquirido!</h3>
+                <p class="text-center text-gray-400 text-sm mb-4">¡Estas son las cartas que obtuviste! (Nombres en Inglés para YGOPro):</p>
+                
+                <ul id="pack-card-list" class="space-y-2 bg-gray-900 p-4 rounded-lg border border-gray-600 mb-6 min-h-[150px]">
+                    <!-- Las cartas se insertarán aquí dinámicamente -->
+                </ul>
+                
+                <button id="modal-close-pack-button" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                    Aceptar
+                </button>
+            </div>
+        </div>
+
+        <footer class="mt-12 text-center text-gray-500 text-sm">
+            <p>Hecho para el seguimiento de tu duelo.</p>
+        </footer>
+    
+    </div> <!-- Fin de #app-content -->
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, setLogLevel, collection, doc, onSnapshot, addDoc, setDoc, updateDoc, getDoc, getDocs, query, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- ¡¡¡ATENCIÓN!!! PASO 1: PEGA TU CONFIGURACIÓN DE FIREBASE AQUÍ ---
+        // 1. Ve a https://firebase.google.com/
+        // 2. Crea un nuevo proyecto.
+        // 3. Ve a "Configuración del proyecto" (Project Settings).
+        // 4. En "Tus apps", haz clic en el icono web (</>).
+        // 5. Registra tu app (ponle cualquier nombre) y Firebase te dará este objeto.
+        // 6. ¡PÉGALO AQUÍ REEMPLAZANDO ESTE OBJETO DE EJEMPLO!
+        const firebaseConfig = {
+            apiKey: "TU_API_KEY",
+            authDomain: "TU_PROJECT_ID.firebaseapp.com",
+            projectId: "TU_PROJECT_ID",
+            storageBucket: "TU_PROJECT_ID.appspot.com",
+            messagingSenderId: "TU_SENDER_ID",
+            appId: "TU_APP_ID"
+        };
+        // --- FIN DEL PASO 1 ---
+
+
+        // --- Variables Globales ---
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        setLogLevel('debug'); 
+
+        let userId; // Auth UID
+        let dbPlayersRef; 
+        let dbHistoryRef; 
+        let localPlayersCache = new Map();
+        
+        let loggedInPlayerId = null;
+        const playerPasswords = {
+            "Pepito": "pepe",
+            "Prometeus": "falerini",
+            "Rela": "itachikun10"
+        };
+
+        // --- DOM ELEMENTS ---
+        const userTableBody = document.getElementById('user-table-body');
+        const historyList = document.getElementById('history-list');
+        const adminPlayerSelect = document.getElementById('admin-player-select');
+        const adminSubmitButton = document.getElementById('admin-submit-button');
+        const adminAddPlayerButton = document.getElementById('admin-add-player-button');
+        const adminNewPlayerName = document.getElementById('admin-new-player-name');
+        const adminNewPlayerDeck = document.getElementById('admin-new-player-deck');
+        const adminPlayerSelectLoser = document.getElementById('admin-player-select-loser');
+        const adminSurrenderCheckbox = document.getElementById('admin-surrender-checkbox');
+        const adminFlawlessCheckbox = document.getElementById('admin-flawless-checkbox');
+        const purchaseFeedback = document.getElementById('purchase-feedback');
+        const adminFeedback = document.getElementById('admin-feedback');
+        
+        // Ranking
+        const rankingTableBody = document.getElementById('ranking-table-body');
+        const adminResetWeekButton = document.getElementById('admin-reset-week-button');
+        const adminWeekFeedback = document.getElementById('admin-week-feedback');
+
+        // Inventario
+        const adminCardInventorySelect = document.getElementById('admin-card-inventory-select');
+        const adminCardInventoryList = document.getElementById('admin-card-inventory-list');
+
+        // Admin Lock
+        const adminLockScreen = document.getElementById('admin-lock-screen');
+        const adminPasswordInput = document.getElementById('admin-password');
+        const adminUnlockButton = document.getElementById('admin-unlock-button');
+        const adminLockFeedback = document.getElementById('admin-lock-feedback');
+        const adminContent = document.getElementById('admin-content');
+        
+        // Modal Apertura Pack
+        const packOpeningModal = document.getElementById('pack-opening-modal');
+        const packCardList = document.getElementById('pack-card-list');
+        const modalClosePackButton = document.getElementById('modal-close-pack-button');
+        
+        // Login
+        const loginScreen = document.getElementById('login-screen');
+        const loginButton = document.getElementById('login-button');
+        const loginUsernameInput = document.getElementById('login-username');
+        const loginPasswordInput = document.getElementById('login-password');
+        const loginFeedback = document.getElementById('login-feedback');
+        const dbLoadingFeedback = document.getElementById('db-loading-feedback');
+        const appContent = document.getElementById('app-content');
+        const loggedInUserDisplay = document.getElementById('logged-in-user-display');
+        const packBuyerDisplay = document.getElementById('pack-buyer-display');
+
+        // Array de botones de packs
+        const packButtons = [
+            document.getElementById('buy-pack-1'),
+            document.getElementById('buy-pack-2'),
+            document.getElementById('buy-pack-3'),
+            document.getElementById('buy-pack-4'),
+            document.getElementById('buy-pack-5'),
+            document.getElementById('buy-pack-6')
+        ];
+        
+        // --- Definición de Cartas en Packs Personalizados ---
+        const customPacks = {
+            "buy-pack-1": {
+                common: ["Kuriboh", "Feral Imp", "Mystical Elf", "Man-Eater Bug", "Book of Secret Arts", "Dark Hole", "Dian Keto the Cure Master", "Spellbinding Circle", "Toon World", "Hane-Hane", "Waboku"],
+                rare: ["Magician of Faith", "Mask of Darkness", "Sangan", "Relinquished", "Black Illusion Ritual", "Monster Reborn", "Change of Heart", "Swords of Revealing Light", "Multiply"]
+            },
+            "buy-pack-2": {
+                common: ["La Jinn the Mystical Genie of the Lamp", "Battle Ox", "Ryu-Kishin Powered", "Axe Raider", "Baby Dragon", "Stop Defense", "Reinforcements", "Trap Hole", "Polymerization", "Alligator's Sword", "Time Wizard"],
+                rare: ["Lord of D.", "The Flute of Summoning Dragon", "Crush Card Virus", "Red-Eyes B. Dragon", "Kunai with Chain", "Mirror Force", "Blue-Eyes White Dragon", "Enemy Controller", "Scapegoat", "Thousand Dragon"]
+            },
+            "buy-pack-3": {
+                common: ["Giant Soldier of Stone", "Witch of the Black Forest", "Mystic Tomato", "Fissure", "Remove Trap", "De-Spell", "Last Will", "Card Destruction"],
+                rare: ["Pot of Greed", "Raigeki", "Heavy Storm", "Mystical Space Typhoon", "Magic Cylinder", "Call of the Haunted", "Seven Tools of the Bandit"],
+                superRare: ["Jinzo", "Torrential Tribute", "Imperial Order", "Ceasefire", "Exodia the Forbidden One", "Left Arm of the Forbidden One", "Right Arm of the Forbidden One", "Left Leg of the Forbidden One", "Right Leg of the Forbidden One"]
+            },
+            "buy-pack-4": {
+                common: ["Kuriboh", "Man-Eater Bug", "Hane-Hane", "Battle Ox", "Axe Raider", "Fissure", "Stop Defense", "Reinforcements", "Trap Hole", "Remove Trap", "De-Spell", "Dian Keto the Cure Master", "Giant Soldier of Stone"],
+                rare: ["Magician of Faith", "Mask of Darkness", "Sangan", "Witch of the Black Forest", "Mystic Tomato", "Lord of D.", "The Flute of Summoning Dragon", "EnemyController", "Scapegoat", "Polymerization"],
+                superRare: ["Jinzo", "Torrential Tribute", "Imperial Order", "Ceasefire", "Exodia the Forbidden One", "Left Arm of the Forbidden One", "Right Arm of the Forbidden One", "Left Leg of the Forbidden One", "Right Leg of the Forbidden One"]
+            },
+            "buy-pack-5": {
+                common: ["La Jinn the Mystical Genie of the Lamp", "Battle Ox", "Ryu-Kishin Powered", "Vorse Raider", "XYZ-Dragon Cannon", "Y-Dragon Head", "Z-Metal Tank", "Kaibaman", "Paladin of White Dragon"],
+                rare: ["Lord of D.", "The Flute of Summoning Dragon", "Blue-Eyes White Dragon", "Crush Card Virus", "Enemy Controller", "Polymerization", "Monster Reborn", "Change of Heart"],
+                superRare: ["Blue-Eyes Ultimate Dragon", "Chaos Emperor Dragon - Envoy of the End", "Black Luster Soldier - Envoy of the Beginning", "Ring of Destruction", "Mirror Force", "Heavy Storm", "Pot of Greed", "Raigeki"]
+            },
+            "buy-pack-6": {
+                rare: ["Magician of Faith", "Mask of Darkness", "Sangan", "Witch of the Black Forest", "Mystic Tomato", "Lord of D.", "The Flute of Summoning Dragon", "Enemy Controller", "Scapegoat", "Polymerization", "Monster Reborn", "Change of Heart", "Swords of Revealing Light", "Multiply", "Red-Eyes B. Dragon", "Kunai with Chain", "Time Wizard"],
+                superRare: ["Jinzo", "Torrential Tribute", "Imperial Order", "Ceasefire", "Blue-Eyes Ultimate Dragon", "Ring of Destruction", "Mirror Force", "Heavy Storm", "Pot of Greed", "Raigeki", "Magic Cylinder", "Call of the Haunted", "Seven Tools of the Bandit"],
+                ultraRare: ["Exodia the Forbidden One", "Left Arm of the Forbidden One", "Right Arm of the Forbidden One", "Left Leg of the Forbidden One", "Right Leg of the Forbidden One", "Chaos Emperor Dragon - Envoy of the End", "Black Luster Soldier - Envoy of the Beginning"]
+            }
+        };
+
+
+        // --- AUTENTICACIÓN Y INICIALIZACIÓN ---
+
+        async function initializeAppWithAuth() {
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    userId = user.uid;
+                    
+                    // Esta es la ruta compartida dentro de TU proyecto de Firebase
+                    const basePath = `torneo-data`; 
+                    dbPlayersRef = collection(db, `${basePath}/players`);
+                    dbHistoryRef = collection(db, `${basePath}/history`);
+
+                    // Quien sea que abra la app, revisará si los datos existen
+                    await seedInitialData();
+                    initPlayersListener();
+                    initHistoryListener();
+                    
+                    dbLoadingFeedback.textContent = "¡Conexión exitosa!";
+                    dbLoadingFeedback.className = "text-green-400 text-sm h-5 text-center";
+                } else {
+                    try {
+                        // Inicia sesión anónimamente. No necesitamos tokens especiales.
+                        await signInAnonymously(auth);
+                    } catch (error) {
+                        console.error("Error de autenticación:", error);
+                        dbLoadingFeedback.textContent = "Error al conectar con la DB.";
+                        dbLoadingFeedback.className = "text-red-400 text-sm h-5 text-center";
+                    }
+                }
+            });
+        }
+
+        // --- LÓGICA DE DATOS INICIALES (SEEDING) ---
+        // Cualquiera puede crear los datos si no existen
+        async function seedInitialData() {
+            const playerQuery = query(dbPlayersRef);
+            const snapshot = await getDocs(playerQuery);
+            if (snapshot.empty) {
+                console.log("Base de datos vacía. Creando datos iniciales...");
+                dbLoadingFeedback.textContent = "Creando base de datos inicial...";
+                
+                const initialPlayers = [
+                    { id: "Pepito", name: "Pepito", dp: 0, deck: "Yugi", wins_semanales: 0, card_collection: {} },
+                    { id: "Prometeus", name: "Prometeus", dp: 0, deck: "Joey", wins_semanales: 0, card_collection: {} },
+                    { id: "Rela", name: "Rela", dp: 0, deck: "Kaiba", wins_semanales: 0, card_collection: {} }
+                ];
+                
+                const initialHistory = []; // Vacío como pediste
+
+                for (const player of initialPlayers) {
+                    await setDoc(doc(dbPlayersRef, player.id), player);
+                }
+                for (const event of initialHistory) {
+                    await addDoc(dbHistoryRef, event);
+                }
+            } else {
+                console.log("Datos encontrados. Omitiendo creación inicial.");
+            }
+        }
+
+        // --- LISTENERS (TIEMPO REAL) ---
+        function initPlayersListener() {
+            onSnapshot(dbPlayersRef, (snapshot) => {
+                const players = [];
+                localPlayersCache.clear(); 
+                snapshot.forEach((doc) => {
+                    const playerData = doc.data();
+                    playerData.id = doc.id;
+                    players.push(playerData);
+                    localPlayersCache.set(playerData.id, playerData); 
+                });
+                
+                const sortedByDp = [...players].sort((a, b) => b.dp - a.dp);
+                const sortedByWins = [...players].sort((a, b) => (b.wins_semanales || 0) - (a.wins_semanales || 0));
+
+                userTableBody.innerHTML = '';
+                adminPlayerSelect.innerHTML = '';
+                adminPlayerSelectLoser.innerHTML = '';
+                rankingTableBody.innerHTML = '';
+                adminCardInventorySelect.innerHTML = '';
+
+                if (players.length === 0) {
+                     const row = `<tr><td colspan="3" class="px-4 py-4 text-center text-gray-400">Cargando base de datos...</td></tr>`;
+                     userTableBody.innerHTML = row;
+                     rankingTableBody.innerHTML = `<tr><td colspan="3" class="px-4 py-4 text-center text-gray-400">Cargando...</td></tr>`;
+                     adminCardInventorySelect.innerHTML = `<option>Cargando...</option>`;
+                     adminPlayerSelect.innerHTML = `<option>Cargando...</option>`;
+                     adminPlayerSelectLoser.innerHTML = `<option>Cargando...</option>`;
+                     return;
+                }
+
+                // Rellenar Tabla de Usuarios (por DP)
+                sortedByDp.forEach(player => {
+                    const row = document.createElement('tr');
+                    row.className = "hover:bg-gray-700 transition duration-150";
+                    row.innerHTML = `
+                        <td class="px-4 py-4 whitespace-nowrap text-lg font-semibold text-white">${player.name}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-2xl font-extrabold text-yellow-400 dp-score">${player.dp}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-400">${player.deck}</td>
+                    `;
+                    userTableBody.appendChild(row);
+                });
+                
+                // Rellenar Dropdowns (Admin y Inventario)
+                players.forEach(player => {
+                    const option = document.createElement('option');
+                    option.value = player.id;
+                    option.textContent = `${player.name} (${player.dp} DP)`;
+                    
+                    const simpleOption = document.createElement('option');
+                    simpleOption.value = player.id;
+                    simpleOption.textContent = player.name;
+                    
+                    adminPlayerSelect.appendChild(option.cloneNode(true));
+                    adminPlayerSelectLoser.appendChild(option.cloneNode(true));
+                    adminCardInventorySelect.appendChild(simpleOption);
+                });
+                
+                // Rellenar tabla de ranking (por Victorias)
+                sortedByWins.forEach((player, index) => {
+                    const rankRow = document.createElement('tr');
+                    rankRow.className = "hover:bg-gray-700 transition duration-150";
+                    rankRow.innerHTML = `
+                        <td class="px-4 py-4 whitespace-nowrap text-lg font-bold text-gray-300">${index + 1}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-lg font-semibold text-white">${player.name}</td>
+                        <td class="px-4 py-4 whitespace-nowrap text-2xl font-extrabold text-green-400">${player.wins_semanales || 0}</td>
+                    `;
+                    rankingTableBody.appendChild(rankRow);
+                });
+                
+                // Actualizar la vista de inventario
+                if(players.length > 0) {
+                     const currentSelection = loggedInPlayerId || players[0].id;
+                     adminCardInventorySelect.value = currentSelection;
+                     displayPlayerInventory(currentSelection);
+                } else {
+                     adminCardInventoryList.innerHTML = `<li class="text-gray-400">No hay jugadores.</li>`;
+                }
+            });
+        }
+
+        function initHistoryListener() {
+            onSnapshot(dbHistoryRef, (snapshot) => {
+                const historyEvents = [];
+                snapshot.forEach((doc) => {
+                    historyEvents.push(doc.data());
+                });
+                historyEvents.sort((a, b) => b.timestamp - a.timestamp);
+                historyList.innerHTML = '';
+
+                if (historyEvents.length === 0) {
+                    historyList.innerHTML = `<li class="bg-gray-700 p-3 rounded-lg text-center text-gray-400">No hay eventos en la historia.</li>`;
+                    return;
+                }
+
+                historyEvents.forEach(event => {
+                    const li = document.createElement('li');
+                    const eventClasses = getHistoryEntryClass(event.type);
+                    const date = new Date(event.timestamp).toLocaleString('es-ES', { timeStyle: 'short', dateStyle: 'short' });
+
+                    li.className = `bg-gray-700 p-3 rounded-lg flex flex-col sm:flex-row justify-between items-start sm:items-center ${eventClasses.bg}`;
+                    li.innerHTML = `
+                        <span class="text-gray-400 text-sm w-full sm:w-1/4 mb-1 sm:mb-0">${date}</span>
+                        <p class="w-full sm:w-3/4 ${eventClasses.text}">
+                            ${event.text}
+                        </p>
+                    `;
+                    historyList.appendChild(li);
+                });
+            });
+        }
+
+        function getHistoryEntryClass(type) {
+            switch(type) {
+                case 'win': return { bg: 'border-l-4 border-green-500', text: 'text-green-300' };
+                case 'buy': return { bg: 'border-l-4 border-blue-500', text: 'text-blue-300' };
+                case 'admin': return { bg: 'border-l-4 border-indigo-500', text: 'text-indigo-300' };
+                case 'penalty': return { bg: 'border-l-4 border-red-500', text: 'text-red-300' };
+                default: return { bg: '', text: 'text-gray-100' };
+            }
+        }
+
+        // --- MANEJADORES DE EVENTOS Y FUNCIONES ---
+        
+        function showFeedback(element, message, isError = false) {
+            element.textContent = message;
+            element.className = isError ? 'text-red-400 text-sm mt-2 h-5 feedback-message opacity-100' : 'text-yellow-300 text-sm mt-2 h-5 feedback-message opacity-100';
+            setTimeout(() => {
+                element.style.opacity = '0';
+            }, 3000);
+        }
+        
+        // --- LÓGICA DE LOGIN ---
+        loginButton.addEventListener('click', () => {
+            const username = loginUsernameInput.value.trim();
+            const password = loginPasswordInput.value;
+            
+            if (localPlayersCache.size === 0) {
+                loginFeedback.textContent = 'Aún conectando con la base de datos...';
+                setTimeout(() => { loginFeedback.textContent = ''; }, 3000);
+                return;
+            }
+
+            if (localPlayersCache.has(username) && playerPasswords[username] === password) {
+                loggedInPlayerId = username; 
+                appContent.classList.remove('hidden'); 
+                loginScreen.classList.add('hidden'); 
+                
+                loggedInUserDisplay.textContent = username;
+                packBuyerDisplay.textContent = username;
+                adminUnlockButton.disabled = false; 
+                adminLockScreen.querySelector('p.text-xs').classList.add('hidden'); 
+                
+            } else {
+                loginFeedback.textContent = 'Usuario o contraseña incorrectos.';
+                setTimeout(() => { loginFeedback.textContent = ''; }, 3000);
+            }
+        });
+        
+        loginPasswordInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                loginButton.click();
+            }
+        });
+
+        // --- Lógica del Panel de Admin ---
+        adminUnlockButton.addEventListener('click', () => {
+            const password = adminPasswordInput.value;
+            if (password === 'as17sa71') {
+                adminLockScreen.classList.add('hidden');
+                adminContent.classList.remove('hidden');
+                adminLockFeedback.textContent = '';
+                adminPasswordInput.value = '';
+            } else {
+                adminLockFeedback.textContent = 'Contraseña incorrecta.';
+                setTimeout(() => {
+                    adminLockFeedback.textContent = '';
+                }, 3000);
+            }
+        });
+
+        adminAddPlayerButton.addEventListener('click', async () => {
+            const name = adminNewPlayerName.value.trim();
+            const deck = adminNewPlayerDeck.value;
+            if (!name) return showFeedback(adminFeedback, "El nombre no puede estar vacío.", true);
+            if (localPlayersCache.has(name)) return showFeedback(adminFeedback, "Ese jugador ya existe.", true);
+            try {
+                const newPlayer = {
+                    name: name, dp: 0, deck: deck, wins_semanales: 0, card_collection: {}
+                };
+                await setDoc(doc(dbPlayersRef, name), newPlayer);
+                const historyEntry = {
+                    text: `Nuevo duelista añadido: ${name} (Deck: ${deck}) con 0 DP.`,
+                    timestamp: Date.now(), type: 'admin'
+                };
+                await addDoc(dbHistoryRef, historyEntry);
+                showFeedback(adminFeedback, `¡Jugador ${name} añadido! (Recuerda añadir su contraseña al código).`);
+                adminNewPlayerName.value = '';
+            } catch (error) {
+                console.error("Error al añadir jugador:", error);
+                showFeedback(adminFeedback, "Error al añadir jugador.", true);
+            }
+        });
+
+        adminSubmitButton.addEventListener('click', async () => {
+            const winnerId = adminPlayerSelect.value;
+            const loserId = adminPlayerSelectLoser.value;
+            if (winnerId === loserId) return showFeedback(adminFeedback, "Un jugador no puede enfrentarse a sí mismo.", true);
+            
+            const didSurrender = adminSurrenderCheckbox.checked;
+            const isFlawless = adminFlawlessCheckbox.checked; 
+            const winner = localPlayersCache.get(winnerId);
+            const loser = localPlayersCache.get(loserId);
+            if (!winner || !loser) return showFeedback(adminFeedback, "Error: Jugadores no encontrados.", true);
+
+            let winnerDpChange = 100; 
+            let loserDpChange = 0;   
+            let eventType = "win";
+            let historyBonuses = []; 
+
+            if (didSurrender) {
+                winnerDpChange += 50; 
+                loserDpChange = -50;  
+                eventType = "penalty";
+                historyBonuses.push("Surrender");
+            }
+            if (isFlawless) {
+                winnerDpChange += 100;
+                historyBonuses.push("Flawless");
+            }
+            const bonusText = historyBonuses.length > 0 ? ` (${historyBonuses.join(', ')})` : '';
+            const historyText = `${winner.name} (+${winnerDpChange} DP) venció a ${loser.name} (${loserDpChange} DP)${bonusText}.`;
+            const newWinnerDp = winner.dp + winnerDpChange;
+            const newLoserDp = loser.dp + loserDpChange;
+            const newWinnerWins = (winner.wins_semanales || 0) + 1;
+
+            try {
+                const batch = writeBatch(db);
+                const winnerRef = doc(dbPlayersRef, winnerId);
+                batch.update(winnerRef, { dp: newWinnerDp, wins_semanales: newWinnerWins });
+                if (loserDpChange !== 0) {
+                    const loserRef = doc(dbPlayersRef, loserId);
+                    batch.update(loserRef, { dp: newLoserDp });
+                }
+                await batch.commit();
+
+                const historyEntry = { text: historyText, timestamp: Date.now(), type: eventType };
+                await addDoc(dbHistoryRef, historyEntry);
+                
+                showFeedback(adminFeedback, `Duelo registrado: ${winner.name} vs ${loser.name}.`);
+                adminSurrenderCheckbox.checked = false;
+                adminFlawlessCheckbox.checked = false;
+            } catch (error) {
+                console.error("Error al registrar duelo:", error);
+                showFeedback(adminFeedback, "Error al registrar el duelo.", true);
+            }
+        });
+
+        adminResetWeekButton.addEventListener('click', async () => {
+            const players = Array.from(localPlayersCache.values());
+            if (players.length === 0) return showFeedback(adminWeekFeedback, "No hay jugadores para reiniciar.", true);
+            
+            const sortedPlayers = [...players].sort((a, b) => (b.wins_semanales || 0) - (a.wins_semanales || 0));
+            const winner = sortedPlayers[0];
+
+            if (!winner || (winner.wins_semanales || 0) === 0) {
+                return showFeedback(adminWeekFeedback, "Nadie ha ganado duelos esta semana. No se puede cerrar.", true);
+            }
+            
+            const winnerName = winner.name;
+            const winnerWins = winner.wins_semanales;
+
+            try {
+                const batch = writeBatch(db);
+                players.forEach(player => {
+                    const playerRef = doc(dbPlayersRef, player.id);
+                    batch.update(playerRef, { wins_semanales: 0 });
+                });
+                const historyEntry = {
+                    text: `🏆 ¡CIERRE DE SEMANA! El ganador es ${winnerName} con ${winnerWins} victorias. El ranking semanal se ha reiniciado.`,
+                    timestamp: Date.now(), type: 'admin'
+                };
+                const historyDocRef = doc(collection(db, dbHistoryRef.path));
+                batch.set(historyDocRef, historyEntry);
+                await batch.commit();
+                showFeedback(adminWeekFeedback, `¡Semana cerrada! Ganador: ${winnerName}.`);
+            } catch (error) {
+                console.error("Error al cerrar la semana:", error);
+                showFeedback(adminWeekFeedback, "Error al cerrar la semana.", true);
+            }
+        });
+
+        // --- Funciones para Inventario de Cartas ---
+        function displayPlayerInventory(playerId) {
+            const selectedPlayerId = playerId || adminCardInventorySelect.value;
+            if (!selectedPlayerId) { 
+                adminCardInventoryList.innerHTML = `<li class="text-gray-400">Selecciona un jugador...</li>`;
+                return;
+            }
+            const player = localPlayersCache.get(selectedPlayerId);
+            adminCardInventoryList.innerHTML = '';
+            if (!player || !player.card_collection || Object.keys(player.card_collection).length === 0) {
+                adminCardInventoryList.innerHTML = `<li class="text-gray-400">Este jugador no tiene cartas.</li>`;
+                return;
+            }
+            const collection = player.card_collection;
+            const sortedCardNames = Object.keys(collection).sort();
+            sortedCardNames.forEach(cardName => {
+                const qty = collection[cardName];
+                const li = document.createElement('li');
+                li.className = "text-gray-200 py-1";
+                li.innerHTML = `${cardName} <span class="ml-2 font-bold text-lg text-yellow-300">(x${qty})</span>`;
+                adminCardInventoryList.appendChild(li);
+            });
+        }
+        
+        adminCardInventorySelect.addEventListener('change', (e) => displayPlayerInventory(e.target.value));
+
+        // --- Funciones para Abrir Packs ---
+        function getRandomCards(arr, n) {
+            const result = new Array(n);
+            let len = arr.length;
+            const taken = new Array(len);
+            if (n > len) n = len;
+            while (n--) {
+                const x = Math.floor(Math.random() * len);
+                result[n] = arr[x in taken ? taken[x] : x];
+                taken[x] = --len in taken ? taken[len] : len;
+            }
+            return result;
+        }
+
+        function openPack(packId) {
+            const pools = customPacks[packId];
+            if (!pools) return ["Error: Pack no definido"];
+            let pulledCards = [];
+
+            if (packId === "buy-pack-1" || packId === "buy-pack-2") {
+                pulledCards = [...getRandomCards(pools.common, 4), ...getRandomCards(pools.rare, 1)];
+            } else if (packId === "buy-pack-3") {
+                pulledCards = [...getRandomCards(pools.common, 3), ...getRandomCards(pools.rare, 1), ...getRandomCards(pools.superRare, 1)];
+            } else if (packId === "buy-pack-4") {
+                pulledCards = [...getRandomCards(pools.common, 4)];
+                pulledCards.push(...getRandomCards(Math.random() < 0.10 ? pools.superRare : pools.rare, 1));
+            } else if (packId === "buy-pack-5") {
+                pulledCards = [...getRandomCards(pools.common, 4), ...getRandomCards(pools.rare, 2), ...getRandomCards(pools.superRare, 1)];
+            } else if (packId === "buy-pack-6") {
+                pulledCards = [...getRandomCards(pools.rare, 4), ...getRandomCards(pools.superRare, 2), ...getRandomCards(pools.ultraRare, 1)];
+            }
+            return pulledCards;
+        }
+
+        function showPackOpeningModal(cards) {
+            packCardList.innerHTML = '';
+            cards.forEach(cardName => {
+                const li = document.createElement('li');
+                li.className = "text-lg text-gray-200 font-medium";
+                li.textContent = cardName;
+                packCardList.appendChild(li);
+            });
+            packOpeningModal.classList.remove('hidden');
+            modalClosePackButton.focus();
+        }
+
+        modalClosePackButton.addEventListener('click', () => {
+            packOpeningModal.classList.add('hidden');
+        });
+
+        // --- LÓGICA DE COMPRA DE PACKS (SIMPLIFICADA) ---
+        
+        async function handlePurchase(packId, packName, cost) {
+            if (!loggedInPlayerId) {
+                return showFeedback(purchaseFeedback, "Debes iniciar sesión para comprar.", true);
+            }
+
+            const player = localPlayersCache.get(loggedInPlayerId);
+            if (!player) {
+                return showFeedback(purchaseFeedback, "Error: No se encontró tu usuario.", true);
+            }
+
+            if (player.dp < cost) {
+                return showFeedback(purchaseFeedback, `DP insuficientes. Necesitas ${cost} DP.`, true);
+            }
+
+            const newDp = player.dp - cost;
+            try {
+                const pulledCards = openPack(packId);
+                const currentCollection = player.card_collection || {};
+                pulledCards.forEach(cardName => {
+                    const currentQty = currentCollection[cardName] || 0;
+                    currentCollection[cardName] = currentQty + 1;
+                });
+
+                const playerRef = doc(dbPlayersRef, loggedInPlayerId);
+                await updateDoc(playerRef, { 
+                    dp: newDp,
+                    card_collection: currentCollection
+                });
+
+                const historyEntry = {
+                    text: `${player.name} compró "${packName}" por ${cost} DP. (DP restantes: ${newDp})`,
+                    timestamp: Date.now(),
+                    type: 'buy'
+                };
+                await addDoc(dbHistoryRef, historyEntry);
+                
+                showFeedback(purchaseFeedback, `¡Compra exitosa! ${packName} adquirido.`);
+                showPackOpeningModal(pulledCards);
+
+            } catch (error) {
+                console.error("Error al comprar pack:", error);
+                showFeedback(purchaseFeedback, "Error al procesar la compra.", true);
+            }
+        }
+
+        packButtons.forEach(button => {
+            button.addEventListener('click', (e) => {
+                const cost = parseInt(e.currentTarget.dataset.cost);
+                const packName = e.currentTarget.dataset.name;
+                const packId = e.currentTarget.id; 
+                handlePurchase(packId, packName, cost);
+            });
+        });
+
+        // --- LÓGICA DE LA RULETA ---
+        const canvas = document.getElementById('rouletteCanvas');
+        const ctx = canvas.getContext('2d');
+        const spinButton = document.getElementById('spinButton');
+        const resultText = document.getElementById('resultText');
+        
+        const decks = [
+            { name: "YUGI", color: "#a80000" },
+            { name: "KAIBA", color: "#3182ce" },
+            { name: "JOEY", color: "#e66000" },
+            { name: "PEGASUS", color: "#48bb78" }
+        ];
+        const numSegments = decks.length;
+        const arcSize = 2 * Math.PI / numSegments;
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        let currentRotation = 0;
+        let isSpinning = false;
+        
+        function drawRoulette() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.save();
+            ctx.translate(centerX, centerY);
+            ctx.rotate(currentRotation);
+            decks.forEach((deck, i) => {
+                const startAngle = i * arcSize;
+                const endAngle = (i + 1) * arcSize;
+                ctx.beginPath();
+                ctx.arc(0, 0, centerX, startAngle, endAngle);
+                ctx.lineTo(0, 0);
+                ctx.closePath();
+                ctx.fillStyle = deck.color;
+                ctx.fill();
+                ctx.save();
+                ctx.rotate(startAngle + arcSize / 2);
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 18px Inter';
+                ctx.textAlign = 'right';
+                ctx.fillText(deck.name, centerX * 0.75, 5); 
+                ctx.restore();
+            });
+            ctx.restore();
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, 30, 0, 2 * Math.PI);
+            ctx.fillStyle = '#1a202c'; 
+            ctx.fill();
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = '#f6e05e';
+            ctx.stroke();
+        }
+        
+        function spinRoulette() {
+            if (isSpinning) return;
+            isSpinning = true;
+            spinButton.disabled = true;
+            resultText.textContent = "¡Girando el Disco de Duelo...";
+            
+            const winningIndex = Math.floor(Math.random() * numSegments);
+            const winningDeck = decks[winningIndex].name;
+            const pointerAngle = 3 * Math.PI / 2;
+            const targetSegmentCenterAngle = winningIndex * arcSize + arcSize / 2;
+            let rotationToAlign = (pointerAngle - targetSegmentCenterAngle);
+            const fullRotations = 5; 
+            const spinDuration = 5000;
+            const startRotation = currentRotation;
+            const normalizedCurrentRotation = startRotation % (2 * Math.PI);
+            
+            let normalizedRotationToAlign = rotationToAlign % (2 * Math.PI);
+            if (normalizedRotationToAlign < 0) normalizedRotationToAlign += 2 * Math.PI;
+            
+            let neededDelta = normalizedRotationToAlign - normalizedCurrentRotation;
+            if (neededDelta < 0) neededDelta += 2 * Math.PI;
+
+            const totalRotationChange = neededDelta + (2 * Math.PI * fullRotations); 
+            let startTimestamp;
+
+            function animateSpin(timestamp) {
+                if (!startTimestamp) startTimestamp = timestamp;
+                const elapsed = timestamp - startTimestamp;
+                const progress = Math.min(elapsed / spinDuration, 1);
+                const easing = 1 - Math.pow(1 - progress, 3); 
+                currentRotation = startRotation + totalRotationChange * easing;
+                drawRoulette();
+                
+                if (progress < 1) {
+                    requestAnimationFrame(animateSpin);
+                } else {
+                    isSpinning = false;
+                    spinButton.disabled = false;
+                    resultText.textContent = `¡Felicidades! Se sorteó el Deck ${winningDeck}.`;
+                    currentRotation = normalizedRotationToAlign;
+                }
+            }
+            requestAnimationFrame(animateSpin);
+        }
+        
+        drawRoulette();
+        spinButton.addEventListener('click', spinRoulette);
+
+        // --- INICIAR LA APLICACIÓN ---
+        // Se llama después de que el usuario elija Host o Join,
+        // pero ahora, sin el Host/Join, lo llamamos directamente.
+        
+        // ¡Ah, espera! El Host/Join era la solución. Lo he quitado por error.
+        // Lo restauro.
+
+    </script>
+</body>
+</html>
