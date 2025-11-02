@@ -449,9 +449,11 @@
 
     <!-- Firebase SDK -->
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, setLogLevel, collection, doc, onSnapshot, addDoc, setDoc, updateDoc, getDoc, getDocs, query, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
+        // TODO: Add SDKs for Firebase products that you want to use
+        // https://firebase.google.com/docs/web/setup#available-libraries
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js";
+        import { getFirestore, setLogLevel, collection, doc, onSnapshot, addDoc, setDoc, updateDoc, getDoc, getDocs, query, writeBatch } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
 
         // --- ¡¡¡ATENCIÓN!!! PASO 1: PEGA TU CONFIGURACIÓN DE FIREBASE AQUÍ ---
         // 1. Ve a https://firebase.google.com/
@@ -460,14 +462,15 @@
         // 4. En "Tus apps", haz clic en el icono web (</>).
         // 5. Registra tu app (ponle cualquier nombre) y Firebase te dará este objeto.
         // 6. ¡PÉGALO AQUÍ REEMPLAZANDO ESTE OBJETO DE EJEMPLO!
-        const firebaseConfig = {
-            apiKey: "TU_API_KEY",
-            authDomain: "TU_PROJECT_ID.firebaseapp.com",
-            projectId: "TU_PROJECT_ID",
-            storageBucket: "TU_PROJECT_ID.appspot.com",
-            messagingSenderId: "TU_SENDER_ID",
-            appId: "TU_APP_ID"
+         const firebaseConfig = {
+            apiKey: "AIzaSyABsmkXrhStMBi6517stczD0KcgVAPNm_A",
+            authDomain: "torneo-duelistas-f535a.firebaseapp.com",
+            projectId: "torneo-duelistas-f535a",
+            storageBucket: "torneo-duelistas-f535a.firebasestorage.app",
+            messagingSenderId: "701455896792",
+            appId: "1:701455896792:web:667ec25f0defd7c98c87ad"
         };
+        
         // --- FIN DEL PASO 1 ---
 
 
@@ -1171,3 +1174,4 @@
     </script>
 </body>
 </html>
+
