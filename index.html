@@ -48,6 +48,8 @@
                     <a href="#usuarios" class="hover:text-gray-200 transition duration-150 font-medium">Usuarios</a>
                     <a href="#packs" class="hover:text-gray-200 transition duration-150 font-medium">Packs</a>
                     <a href="#ranking" class="hover:text-gray-200 transition duration-150 font-medium">Ranking</a>
+                    <!-- NUEVO: Enlace al Marketplace -->
+                    <a href="#marketplace" class="hover:text-gray-200 transition duration-150 font-medium">Marketplace</a>
                     <a href="#admin" class="hover:text-gray-200 transition duration-150 font-medium">Admin</a>
                     <a href="#juegos" class="hover:text-gray-200 transition duration-150 font-medium">Juegos</a>
                     <a href="#historia" class="hover:text-gray-200 transition duration-150 font-medium">Historia</a>
@@ -224,6 +226,62 @@
                 </div>
             </section>
 
+            <!-- NUEVA SECCIÓN: Marketplace -->
+            <section id="marketplace" class="card p-6 rounded-xl text-white">
+                <h2 class="text-3xl font-extrabold mb-6 text-teal-400 border-b border-teal-400/50 pb-2">
+                    🔄 Marketplace
+                </h2>
+                <p class="text-gray-300 mb-6">
+                    Compra y vende cartas con otros duelistas. La casa cobra una comisión del 10% sobre todas las ventas.
+                </p>
+
+                <!-- Contenedor del Marketplace (Vender y Comprar) -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    
+                    <!-- Columna de Venta -->
+                    <div>
+                        <h3 class="text-xl font-bold mb-4 text-gray-100">Vender una Carta</h3>
+                        <div class="space-y-4 p-4 bg-gray-700/50 rounded-lg border border-gray-600">
+                            <div>
+                                <label for="market-sell-card-select" class="block text-sm font-medium text-gray-300 mb-2">Carta de tu Inventario:</label>
+                                <select id="market-sell-card-select" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                    <option>Carga tu inventario...</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="market-sell-price" class="block text-sm font-medium text-gray-300 mb-2">Precio de Venta (DP):</label>
+                                <input type="number" id="market-sell-price" min="1" placeholder="Ej: 500" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-teal-500">
+                            </div>
+                            <button id="market-sell-button" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                                Poner en Venta
+                            </button>
+                            <p id="market-sell-feedback" class="text-center text-yellow-300 text-sm h-5 feedback-message opacity-0"></p>
+                        </div>
+                    </div>
+
+                    <!-- Columna de Compra -->
+                    <div>
+                        <h3 class="text-xl font-bold mb-4 text-gray-100">Listados Actuales</h3>
+                        <div class="overflow-y-auto max-h-[400px] bg-gray-900 p-2 rounded-lg border border-gray-600">
+                            <table class="min-w-full divide-y divide-gray-700 market-table">
+                                <thead class="bg-gray-700 sticky top-0">
+                                    <tr>
+                                        <th class_="" scope="col">Carta</th>
+                                        <th scope="col">Precio</th>
+                                        <th scope="col">Vendedor</th>
+                                        <th scope="col">Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="market-listings-body" class="divide-y divide-gray-800">
+                                    <tr><td colspan="4" class="px-3 py-4 text-center text-gray-400">Cargando listados...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <p id="market-buy-feedback" class="text-center text-yellow-300 text-sm h-5 mt-4 feedback-message opacity-0"></p>
+                    </div>
+                </div>
+            </section>
+
             <!-- Panel de Administración -->
             <section id="admin" class="card p-6 rounded-xl text-white">
                 <h2 class="text-3xl font-extrabold mb-6 text-indigo-400 border-b border-indigo-400/50 pb-2">
@@ -339,6 +397,20 @@
                         <ul id="admin-card-inventory-list" class="space-y-2 bg-gray-900 p-4 rounded-lg border border-gray-600 min-h-[150px] max-h-60 overflow-y-auto">
                             <li class="text-gray-400">Selecciona un jugador para ver su inventario.</li>
                         </ul>
+                    </div>
+
+                    <!-- NUEVO: Reseteo de Fábrica -->
+                    <hr class="border-gray-600 my-8">
+                    <div>
+                        <h3 class="text-xl font-bold mb-3 text-red-400">Zona de Peligro - Reseteo Total</h3>
+                        <p class="text-sm text-gray-400 mb-4">
+                            Esto borrará TODOS los jugadores, CUALQUIER inventario, TODA la historia y TODOS los listados del marketplace.
+                            La base de datos se reiniciará con los 3 jugadores base en 0 DP. Esta acción es irreversible.
+                        </p>
+                        <button id="admin-factory-reset-button" class="w-full max-w-sm mx-auto bg-red-800 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg transition-all duration-300 factory-reset-button" data-confirmed="false">
+                            Iniciar Reseteo de Fábrica
+                        </button>
+                        <p id="admin-reset-feedback" class="text-center text-red-300 text-sm mt-2 h-5 feedback-message opacity-0"></p>
                     </div>
 
                 </div>
@@ -591,4 +663,5 @@
     
 </body>
 </html>
+
 
