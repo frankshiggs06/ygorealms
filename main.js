@@ -202,6 +202,7 @@ function initPlayersListener() {
         updateRankingTable(sortedByWins);
         updateAdminDropdowns(players);
         updateMarketplaceSellDropdown(loggedInPlayerId); // NUEVO: Actualizar dropdown de venta
+        updateMarketplaceListings(); // <<< ¡ESTA ES LA CORRECCIÓN!
         
         if (loggedInPlayerId) {
             updateGameButtonsUI();
@@ -1693,3 +1694,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initLogin();
     initializeAppWithAuth();
 });
+
+
+
+
