@@ -1,0 +1,207 @@
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: #1a202c; /* Fondo oscuro */
+}
+.card {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    background-color: #2d3748; /* Color de tarjeta oscuro */
+}
+.header-bg {
+    background-color: #3182ce; /* Azul vibrante */
+}
+.dp-score {
+    text-shadow: 0 0 5px #f6e05e;
+}
+
+/* Estilos para feedback */
+.feedback-message {
+    transition: opacity 0.5s ease-out;
+}
+/* Estilos para el modal */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+    transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+}
+.modal-content {
+    background-color: #1f2937; /* gray-800 */
+    color: white;
+    border-radius: 0.75rem; /* rounded-xl */
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    padding: 1.5rem; /* p-6 */
+    width: 100%;
+    max-width: 32rem; /* max-w-lg */
+    border: 1px solid #374151; /* gray-700 */
+}
+
+/* Estilo para las imágenes de los packs */
+.pack-image {
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    border-radius: 0.25rem;
+    margin-bottom: 0.75rem;
+    border: 2px solid #4a5568; /* Borde gris */
+}
+
+/* --- NUEVOS ESTILOS PARA JUEGOS --- */
+.game-card {
+    background-color: #374151; /* gray-700 */
+    border-radius: 0.75rem; /* rounded-xl */
+    padding: 1.5rem; /* p-6 */
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    border: 2px solid #4b5563; /* gray-600 */
+    transition: all 0.3s ease;
+}
+.game-card:not(.disabled) {
+    cursor: pointer;
+}
+.game-card:not(.disabled):hover {
+    border-color: #ec4899; /* pink-500 */
+    transform: translateY(-5px);
+}
+.game-card.disabled {
+    opacity: 0.5;
+    background-color: #1f2937; /* gray-800 */
+}
+.game-card-title {
+    font-size: 1.25rem; /* text-xl */
+    font-weight: 700; /* font-bold */
+}
+.game-card-description {
+    font-size: 0.875rem; /* text-sm */
+    color: #9ca3af; /* gray-400 */
+    margin-top: 0.5rem; /* mt-2 */
+    margin-bottom: 1rem; /* mb-4 */
+    flex-grow: 1;
+}
+
+/* Estilos para el juego Eternals BetCards */
+#game-1-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin: 1.5rem 0;
+}
+.bet-card {
+    aspect-ratio: 2.5 / 3.5;
+    background-color: #4b5563; /* gray-600 */
+    border-radius: 0.5rem; /* rounded-lg */
+    cursor: pointer;
+    border: 3px solid transparent;
+    transition: all 0.3s ease;
+    transform-style: preserve-3d;
+    position: relative;
+}
+.bet-card:hover {
+    border-color: #fcd34d; /* yellow-300 */
+}
+.bet-card .card-face {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    backface-visibility: hidden;
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1rem;
+}
+.bet-card .card-front {
+    /* Patrón de dorso de carta Yu-Gi-Oh! (simplificado) */
+    background-color: #1e3a8a; /* blue-800 */
+    background-image: radial-gradient(#fcd34d 20%, transparent 20%),
+                      radial-gradient(#fcd34d 20%, transparent 20%);
+    background-position: 0 0, 50px 50px;
+    background-size: 10px 10px;
+}
+.bet-card .card-back {
+    transform: rotateY(180deg);
+}
+.bet-card .card-back.win {
+    background-color: #ca8a04; /* yellow-600 */
+    color: #1f2937;
+    border: 2px solid #fde047; /* yellow-200 */
+}
+.bet-card .card-back.lose {
+    background-color: #374151; /* gray-700 */
+    color: #9ca3af;
+    border: 2px solid #4b5563; /* gray-600 */
+}
+
+.bet-card.is-flipped {
+    transform: rotateY(180deg);
+}
+.bet-card.chosen {
+    border-color: #22c55e; /* green-500 */
+    box-shadow: 0 0 20px #22c55e;
+}
+
+/* Estilos para botones de apuesta */
+.bet-button {
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    background-color: #374151; /* gray-700 */
+    border: 2px solid #4b5563; /* gray-600 */
+    color: #d1d5db; /* gray-300 */
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+.bet-button:hover:not(:disabled) {
+    background-color: #4b5563; /* gray-600 */
+}
+.bet-button.selected {
+    background-color: #3b82f6; /* blue-600 */
+    border-color: #60a5fa; /* blue-400 */
+    color: white;
+    box-shadow: 0 0 10px #3b82f6;
+}
+.bet-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Estilos Juego 2: Duelo de Dados */
+#game-2-dice-container {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin: 1.5rem 0;
+    min-height: 80px;
+}
+.dice {
+    width: 80px;
+    height: 80px;
+    background-color: #e5e7eb; /* gray-200 */
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3rem;
+    font-weight: bold;
+    color: #1f2937;
+}
+
+/* Estilos Juego 3: Moneda */
+#game-3-coin {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    margin: 1.5rem auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    font-weight: bold;
+    color: #1e293b;
+    background-color: #fbbf24; /* amber-400 */
+    border: 5px solid #f59e0b; /* amber-500 */
+    transition: transform 0.5s;
+}
