@@ -4,7 +4,7 @@ import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gsta
 import { 
     getFirestore, setLogLevel, collection, doc, 
     onSnapshot, addDoc, setDoc, updateDoc, 
-    getDocs, query, writeBatch 
+    getDocs, query, writeBatch, deleteDoc // Añadido deleteDoc para el reseteo
 } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
 
 // --- CONFIGURACIÓN DE FIREBASE ---
@@ -26,7 +26,9 @@ setLogLevel('debug');
 let userId;
 let dbPlayersRef; 
 let dbHistoryRef; 
+// let dbMarketplaceRef; // ELIMINADO
 let localPlayersCache = new Map();
+// let localMarketplaceCache = new Map(); // ELIMINADO
 let loggedInPlayerId = null;
 
 const playerPasswords = {
@@ -50,7 +52,6 @@ const dbLoadingFeedback = document.getElementById('db-loading-feedback');
 const appContent = document.getElementById('app-content');
 const loggedInUserDisplay = document.getElementById('logged-in-user-display');
 const packBuyerDisplay = document.getElementById('pack-buyer-display');
-// (Las variables duplicadas de adminLockScreen y adminUnlockButton se eliminaron para evitar errores)
 const purchaseFeedback = document.getElementById('purchase-feedback');
 const adminFeedback = document.getElementById('admin-feedback');
 const adminWeekFeedback = document.getElementById('admin-week-feedback');
@@ -73,10 +74,12 @@ async function initializeAppWithAuth() {
             const basePath = `torneo/torneo-data`; 
             dbPlayersRef = collection(db, `${basePath}/players`);
             dbHistoryRef = collection(db, `${basePath}/history`);
+            // dbMarketplaceRef = collection(db, `${basePath}/marketplace`); // ELIMINADO
 
             await seedInitialData();
             initPlayersListener();
             initHistoryListener();
+            // initMarketplaceListener(); // ELIMINADO
             
             dbLoadingFeedback.textContent = "¡Conexión exitosa!";
             dbLoadingFeedback.className = "text-green-400 text-sm h-5 text-center";
@@ -85,6 +88,7 @@ async function initializeAppWithAuth() {
             initStore();
             initGames();
             initAdmin();
+            // initMarketplace(); // ELIMINADO
 
         } else {
             try {
@@ -189,9 +193,11 @@ function initPlayersListener() {
         updateUserTable(sortedByDp);
         updateRankingTable(sortedByWins);
         updateAdminDropdowns(players);
+        // updateMarketplaceSellDropdown(loggedInPlayerId); // ELIMINADO
         
         if (loggedInPlayerId) {
             updateGameButtonsUI();
+            updatePackButtonsUI(); // NUEVO: Actualizar botones de pack
         }
     });
 }
@@ -334,6 +340,22 @@ function updateGameButtonsUI() {
     }
 }
 
+// Habilitar/deshabilitar botones de pack según DP
+function updatePackButtonsUI() {
+    if (!loggedInPlayerId) return;
+    const player = localPlayersCache.get(loggedInPlayerId);
+    if (!player) return;
+
+    packButtons.forEach(button => {
+        const packCost = parseInt(button.dataset.cost);
+        if (player.dp < packCost) {
+            button.disabled = true;
+        } else {
+            button.disabled = false;
+        }
+    });
+}
+
 // --- LÓGICA DE LOGIN ---
 function initLogin() {
     loginButton.addEventListener('click', () => {
@@ -365,6 +387,8 @@ function initLogin() {
             document.getElementById('admin-lock-screen').querySelector('p.text-xs').classList.add('hidden'); 
             
             updateGameButtonsUI(); // Actualiza los botones de juego al loguear
+            updatePackButtonsUI(); // Actualizar botones de pack al loguear
+            // updateMarketplaceSellDropdown(loggedInPlayerId); // ELIMINADO
             
         } else {
             loginFeedback.textContent = 'Usuario o contraseña incorrectos.';
@@ -389,6 +413,7 @@ function getHistoryEntryClass(type) {
         case 'penalty': return { bg: 'border-l-4 border-red-500', text: 'text-red-300' };
         case 'game_win': return { bg: 'border-l-4 border-pink-500', text: 'text-pink-300' };
         case 'game_lose': return { bg: 'border-l-4 border-gray-500', text: 'text-gray-300' };
+        // case 'market': return { bg: 'border-l-4 border-teal-500', text: 'text-teal-300' }; // ELIMINADO
         default: return { bg: '', text: 'text-gray-100' };
     }
 }
@@ -400,6 +425,7 @@ function showFeedback(element, message, isError = false, duration = 3000) {
         : 'text-yellow-300 text-sm mt-2 h-5 feedback-message opacity-100 text-center';
     if(duration > 0) {
         setTimeout(() => {
+            // element.textContent = ''; // No limpiar, solo ocultar
             element.style.opacity = '0';
         }, duration);
     }
@@ -571,7 +597,8 @@ async function handlePackPurchase(event) {
         console.error("Error al comprar pack:", error);
         showFeedback(purchaseFeedback, "Error al procesar la compra.", true);
     } finally {
-        packButtons.forEach(btn => btn.disabled = false); // Rehabilitar botones
+        // Los botones se reactivarán automáticamente por el listener de players
+        // que llama a updatePackButtonsUI()
     }
 }
 
@@ -1095,6 +1122,11 @@ const adminResetWeekButton = document.getElementById('admin-reset-week-button');
 
 const adminCardInventorySelect = document.getElementById('admin-card-inventory-select');
 const adminCardInventoryList = document.getElementById('admin-card-inventory-list');
+// NUEVOS BOTONES DE RESET
+const adminFactoryResetButton = document.getElementById('admin-factory-reset-button');
+const adminResetFeedback = document.getElementById('admin-reset-feedback');
+let factoryResetTimer = null;
+
 
 // --- CONSTANTES DEL ADMIN ---
 const ADMIN_PASSWORD = "as17sa71";
@@ -1113,6 +1145,9 @@ function initAdmin() {
     adminCardInventorySelect.addEventListener('change', (e) => {
         updateCardInventoryView(e.target.value);
     });
+
+    // NUEVO: Listener para el botón de reseteo
+    adminFactoryResetButton.addEventListener('click', handleFactoryResetClick);
 }
 
 // --- LÓGICA DEL PANEL DE ADMIN ---
@@ -1323,10 +1358,81 @@ function updateCardInventoryView(playerId) {
         adminCardInventoryList.appendChild(li);
     });
 }
+
+// NUEVA FUNCIÓN: Lógica de doble clic para el reseteo de fábrica
+function handleFactoryResetClick() {
+    if (factoryResetTimer) {
+        // Segundo clic (confirmado)
+        clearTimeout(factoryResetTimer);
+        factoryResetTimer = null;
+        adminFactoryResetButton.disabled = true;
+        adminFactoryResetButton.textContent = "¡RESETEANDO...!";
+        executeFactoryReset();
+    } else {
+        // Primer clic
+        adminFactoryResetButton.dataset.confirmed = "true";
+        adminFactoryResetButton.textContent = "CONFIRMAR RESETEO (¿SEGURO?)";
+        showFeedback(adminResetFeedback, "¡Haz clic de nuevo en 5 seg para confirmar!", true, 5000);
+
+        factoryResetTimer = setTimeout(() => {
+            adminFactoryResetButton.dataset.confirmed = "false";
+            adminFactoryResetButton.textContent = "Iniciar Reseteo de Fábrica";
+            factoryResetTimer = null;
+            showFeedback(adminResetFeedback, "Reseteo cancelado.", false, 2000);
+        }, 5000);
+    }
+}
+
+// NUEVA FUNCIÓN: Ejecutar el reseteo
+async function executeFactoryReset() {
+    showFeedback(adminResetFeedback, "Borrando todas las colecciones...", true, 0);
+
+    try {
+        const batch = writeBatch(db);
+
+        // 1. Borrar todos los jugadores
+        const playersSnapshot = await getDocs(dbPlayersRef);
+        playersSnapshot.forEach(doc => batch.delete(doc.ref));
+
+        // 2. Borrar todo el historial
+        const historySnapshot = await getDocs(dbHistoryRef);
+        historySnapshot.forEach(doc => batch.delete(doc.ref));
+
+        // 3. Borrar todos los listados del marketplace (ELIMINADO)
+        // const marketplaceSnapshot = await getDocs(dbMarketplaceRef);
+        // marketplaceSnapshot.forEach(doc => batch.delete(doc.ref));
+        
+        await batch.commit();
+        
+        showFeedback(adminResetFeedback, "¡Borrado completo! Volviendo a sembrar datos...", false, 0);
+
+        // Volver a sembrar los datos iniciales
+        // seedInitialData se llamará automáticamente por el listener de players al ver que está vacío
+        // Pero lo llamamos manualmente para asegurar
+        await seedInitialData();
+
+        showFeedback(adminResetFeedback, "¡Reseteo de fábrica completado! La página se recargará.", false, 5000);
+        setTimeout(() => location.reload(), 5000);
+
+    } catch (error) {
+        console.error("Error en el reseteo de fábrica:", error);
+        showFeedback(adminResetFeedback, "Error fatal durante el reseteo.", true, 5000);
+        adminFactoryResetButton.disabled = false;
+        adminFactoryResetButton.textContent = "Iniciar Reseteo de Fábrica";
+    }
+}
 // --- [FIN] MÓDULO: admin.js ---
 
 
+// --- [INICIO] MÓDULO: marketplace.js --- ELIMINADO ---
+// (Todo el código del marketplace ha sido eliminado)
+// --- [FIN] MÓDULO: marketplace.js --- ELIMINADO ---
+
+
 // --- INICIAR LA APLICACIÓN ---
-initLogin();
-initializeAppWithAuth();
+// Esperar a que el DOM esté completamente cargado para iniciar
+document.addEventListener('DOMContentLoaded', () => {
+    initLogin();
+    initializeAppWithAuth();
+});
 
