@@ -461,8 +461,8 @@
         // 3. Ve a "Configuración del proyecto" (Project Settings).
         // 4. En "Tus apps", haz clic en el icono web (</>).
         // 5. Registra tu app (ponle cualquier nombre) y Firebase te dará este objeto.
-        // 6. ¡PÉGALO AQUÍ REEMPLAZANDO ESTE OBJETO DE EJEMPLO!
-             const firebaseConfig = {
+        // 6. ¡PÉGALO AQUÍ REEMPLAZANDO ESTE OBJETO DE EJEMPO!
+        const firebaseConfig = {
             apiKey: "AIzaSyABsmkXrhStMBi6517stczD0KcgVAPNm_A",
             authDomain: "torneo-duelistas-f535a.firebaseapp.com",
             projectId: "torneo-duelistas-f535a",
@@ -588,8 +588,13 @@
                 if (user) {
                     userId = user.uid;
                     
-                    // Esta es la ruta compartida dentro de TU proyecto de Firebase
-                    const basePath = `torneo-data`; 
+                    // --- CORRECCIÓN ---
+                    // La ruta a un DOCUMENTO debe tener un número par de segmentos.
+                    // La ruta a una COLECCIÓN debe tener un número impar de segmentos.
+                    // "torneo" = colección (1)
+                    // "torneo/torneo-data" = documento (2)
+                    // "torneo/torneo-data/players" = colección (3) - ¡CORRECTO!
+                    const basePath = `torneo/torneo-data`; 
                     dbPlayersRef = collection(db, `${basePath}/players`);
                     dbHistoryRef = collection(db, `${basePath}/history`);
 
@@ -713,6 +718,7 @@
                 
                 // Actualizar la vista de inventario
                 if(players.length > 0) {
+                     // Si un usuario ya inició sesión, selecciónalo por defecto
                      const currentSelection = loggedInPlayerId || players[0].id;
                      adminCardInventorySelect.value = currentSelection;
                      displayPlayerInventory(currentSelection);
@@ -775,7 +781,7 @@
         
         // --- LÓGICA DE LOGIN ---
         loginButton.addEventListener('click', () => {
-            const username = loginUsernameInput.value.trim();
+            const usernameInput = loginUsernameInput.value.trim(); // "pepito"
             const password = loginPasswordInput.value;
             
             if (localPlayersCache.size === 0) {
@@ -784,17 +790,30 @@
                 return;
             }
 
-            if (localPlayersCache.has(username) && playerPasswords[username] === password) {
-                loggedInPlayerId = username; 
+            // --- LÓGICA DE LOGIN CORREGIDA (NO SENSIBLE A MAYÚSCULAS) ---
+            let foundPlayer = null;
+            // Iteramos sobre los jugadores en el caché
+            for (const player of localPlayersCache.values()) {
+                // Comparamos los nombres en minúsculas
+                if (player.name.toLowerCase() === usernameInput.toLowerCase()) {
+                    foundPlayer = player;
+                    break; // Encontramos al jugador
+                }
+            }
+
+            // Ahora comprobamos la contraseña usando el nombre correcto (ej: "Pepito")
+            if (foundPlayer && playerPasswords[foundPlayer.name] === password) {
+                loggedInPlayerId = foundPlayer.name; // Guardamos el ID/Nombre correcto
                 appContent.classList.remove('hidden'); 
                 loginScreen.classList.add('hidden'); 
                 
-                loggedInUserDisplay.textContent = username;
-                packBuyerDisplay.textContent = username;
+                loggedInUserDisplay.textContent = foundPlayer.name;
+                packBuyerDisplay.textContent = foundPlayer.name;
                 adminUnlockButton.disabled = false; 
                 adminLockScreen.querySelector('p.text-xs').classList.add('hidden'); 
                 
             } else {
+                // Si no se encontró el jugador o la contraseña es incorrecta
                 loginFeedback.textContent = 'Usuario o contraseña incorrectos.';
                 setTimeout(() => { loginFeedback.textContent = ''; }, 3000);
             }
@@ -1165,15 +1184,9 @@
         spinButton.addEventListener('click', spinRoulette);
 
         // --- INICIAR LA APLICACIÓN ---
-        // Se llama después de que el usuario elija Host o Join,
-        // pero ahora, sin el Host/Join, lo llamamos directamente.
-        
-        // ¡Ah, espera! El Host/Join era la solución. Lo he quitado por error.
-        // Lo restauro.
+        initializeAppWithAuth();
 
     </script>
 </body>
 </html>
-
-
 
