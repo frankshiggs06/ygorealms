@@ -26,9 +26,9 @@ setLogLevel('debug');
 let userId;
 let dbPlayersRef; 
 let dbHistoryRef; 
-// let dbMarketplaceRef; // ELIMINADO
+let dbMarketplaceRef; // NUEVO: Para el Marketplace
 let localPlayersCache = new Map();
-// let localMarketplaceCache = new Map(); // ELIMINADO
+let localMarketplaceCache = new Map(); // NUEVO: Cache para listados
 let loggedInPlayerId = null;
 
 const playerPasswords = {
@@ -63,6 +63,14 @@ const packButtons = [
     document.getElementById('buy-pack-5'),
     document.getElementById('buy-pack-6')
 ];
+// NUEVO: DOM del Marketplace
+const marketSellCardSelect = document.getElementById('market-sell-card-select');
+const marketSellPriceInput = document.getElementById('market-sell-price');
+const marketSellButton = document.getElementById('market-sell-button');
+const marketSellFeedback = document.getElementById('market-sell-feedback');
+const marketListingsBody = document.getElementById('market-listings-body');
+const marketBuyFeedback = document.getElementById('market-buy-feedback');
+
 
 // --- AUTENTICACIÓN Y INICIALIZACIÓN ---
 
@@ -74,12 +82,12 @@ async function initializeAppWithAuth() {
             const basePath = `torneo/torneo-data`; 
             dbPlayersRef = collection(db, `${basePath}/players`);
             dbHistoryRef = collection(db, `${basePath}/history`);
-            // dbMarketplaceRef = collection(db, `${basePath}/marketplace`); // ELIMINADO
+            dbMarketplaceRef = collection(db, `${basePath}/marketplace`); // NUEVO
 
             await seedInitialData();
             initPlayersListener();
             initHistoryListener();
-            // initMarketplaceListener(); // ELIMINADO
+            initMarketplaceListener(); // NUEVO
             
             dbLoadingFeedback.textContent = "¡Conexión exitosa!";
             dbLoadingFeedback.className = "text-green-400 text-sm h-5 text-center";
@@ -88,7 +96,7 @@ async function initializeAppWithAuth() {
             initStore();
             initGames();
             initAdmin();
-            // initMarketplace(); // ELIMINADO
+            initMarketplace(); // NUEVO
 
         } else {
             try {
@@ -193,7 +201,7 @@ function initPlayersListener() {
         updateUserTable(sortedByDp);
         updateRankingTable(sortedByWins);
         updateAdminDropdowns(players);
-        // updateMarketplaceSellDropdown(loggedInPlayerId); // ELIMINADO
+        updateMarketplaceSellDropdown(loggedInPlayerId); // NUEVO: Actualizar dropdown de venta
         
         if (loggedInPlayerId) {
             updateGameButtonsUI();
@@ -388,7 +396,7 @@ function initLogin() {
             
             updateGameButtonsUI(); // Actualiza los botones de juego al loguear
             updatePackButtonsUI(); // Actualizar botones de pack al loguear
-            // updateMarketplaceSellDropdown(loggedInPlayerId); // ELIMINADO
+            updateMarketplaceSellDropdown(loggedInPlayerId); // NUEVO: Cargar dropdown de venta
             
         } else {
             loginFeedback.textContent = 'Usuario o contraseña incorrectos.';
@@ -413,7 +421,7 @@ function getHistoryEntryClass(type) {
         case 'penalty': return { bg: 'border-l-4 border-red-500', text: 'text-red-300' };
         case 'game_win': return { bg: 'border-l-4 border-pink-500', text: 'text-pink-300' };
         case 'game_lose': return { bg: 'border-l-4 border-gray-500', text: 'text-gray-300' };
-        // case 'market': return { bg: 'border-l-4 border-teal-500', text: 'text-teal-300' }; // ELIMINADO
+        case 'market': return { bg: 'border-l-4 border-teal-500', text: 'text-teal-300' }; // NUEVO
         default: return { bg: '', text: 'text-gray-100' };
     }
 }
@@ -1398,9 +1406,9 @@ async function executeFactoryReset() {
         const historySnapshot = await getDocs(dbHistoryRef);
         historySnapshot.forEach(doc => batch.delete(doc.ref));
 
-        // 3. Borrar todos los listados del marketplace (ELIMINADO)
-        // const marketplaceSnapshot = await getDocs(dbMarketplaceRef);
-        // marketplaceSnapshot.forEach(doc => batch.delete(doc.ref));
+        // 3. Borrar todos los listados del marketplace (NUEVO)
+        const marketplaceSnapshot = await getDocs(dbMarketplaceRef);
+        marketplaceSnapshot.forEach(doc => batch.delete(doc.ref));
         
         await batch.commit();
         
@@ -1424,9 +1432,253 @@ async function executeFactoryReset() {
 // --- [FIN] MÓDULO: admin.js ---
 
 
-// --- [INICIO] MÓDULO: marketplace.js --- ELIMINADO ---
-// (Todo el código del marketplace ha sido eliminado)
-// --- [FIN] MÓDULO: marketplace.js --- ELIMINADO ---
+// --- [INICIO] MÓDULO: marketplace.js ---
+
+// --- FUNCIÓN DE INICIALIZACIÓN ---
+function initMarketplace() {
+    marketSellButton.addEventListener('click', listCardForSale);
+    marketListingsBody.addEventListener('click', handleBuyCardClick);
+}
+
+// --- LISTENER DEL MARKETPLACE ---
+function initMarketplaceListener() {
+    onSnapshot(dbMarketplaceRef, (snapshot) => {
+        localMarketplaceCache.clear();
+        snapshot.forEach(doc => {
+            localMarketplaceCache.set(doc.id, { id: doc.id, ...doc.data() });
+        });
+        updateMarketplaceListings();
+    });
+}
+
+// --- FUNCIONES DE UI DEL MARKETPLACE ---
+function updateMarketplaceListings() {
+    marketListingsBody.innerHTML = '';
+    const listings = Array.from(localMarketplaceCache.values());
+
+    if (listings.length === 0) {
+        marketListingsBody.innerHTML = `<tr><td colspan="4" class="px-3 py-4 text-center text-gray-400">El marketplace está vacío.</td></tr>`;
+        return;
+    }
+    
+    // Ordenar por precio (más barato primero)
+    listings.sort((a, b) => a.price - b.price);
+
+    listings.forEach(listing => {
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-gray-800 transition-colors";
+        
+        const isOwner = listing.sellerId === loggedInPlayerId;
+        const player = localPlayersCache.get(loggedInPlayerId);
+        const canAfford = player ? player.dp >= listing.price : false;
+        const buyButtonDisabled = isOwner || !canAfford;
+
+        tr.innerHTML = `
+            <td class="px-3 py-3 card-name">${listing.cardName}</td>
+            <td class="px-3 py-3 card-price">${listing.price} DP</td>
+            <td class="px-3 py-3 text-gray-400">${listing.sellerName}</td>
+            <td class="px-3 py-3">
+                <button 
+                    class="buy-button" 
+                    data-listing-id="${listing.id}" 
+                    ${buyButtonDisabled ? 'disabled' : ''}
+                >
+                    ${isOwner ? 'Tuyo' : 'Comprar'}
+                </button>
+            </td>
+        `;
+        marketListingsBody.appendChild(tr);
+    });
+}
+
+function updateMarketplaceSellDropdown(playerId) {
+    marketSellCardSelect.innerHTML = '';
+    if (!playerId) {
+        marketSellCardSelect.innerHTML = `<option>Inicia sesión para vender</option>`;
+        return;
+    }
+    
+    const player = localPlayersCache.get(playerId);
+    if (!player || !player.card_collection || Object.keys(player.card_collection).length === 0) {
+        marketSellCardSelect.innerHTML = `<option>No tienes cartas para vender</option>`;
+        return;
+    }
+
+    const sortedCards = Object.keys(player.card_collection).sort();
+    let hasCards = false;
+    
+    sortedCards.forEach(cardName => {
+        const count = player.card_collection[cardName];
+        if (count > 0) {
+            hasCards = true;
+            const option = document.createElement('option');
+            option.value = cardName;
+            option.textContent = `${cardName} (Tienes ${count})`;
+            marketSellCardSelect.appendChild(option);
+        }
+    });
+
+    if (!hasCards) {
+        marketSellCardSelect.innerHTML = `<option>No tienes cartas para vender</option>`;
+    }
+}
+
+// --- LÓGICA DE VENTA Y COMPRA ---
+async function listCardForSale() {
+    const cardName = marketSellCardSelect.value;
+    const price = parseInt(marketSellPriceInput.value);
+    const player = localPlayersCache.get(loggedInPlayerId);
+
+    if (!player) {
+        showFeedback(marketSellFeedback, "No se encontró al jugador.", true);
+        return;
+    }
+    if (!cardName || !player.card_collection || player.card_collection[cardName] < 1) {
+        showFeedback(marketSellFeedback, "No tienes esa carta para vender.", true);
+        return;
+    }
+    if (!price || price <= 0) {
+        showFeedback(marketSellFeedback, "Debes introducir un precio válido.", true);
+        return;
+    }
+
+    showFeedback(marketSellFeedback, "Listando tu carta...", false, 0);
+    marketSellButton.disabled = true;
+
+    try {
+        // 1. Crear el nuevo listado
+        const newListing = {
+            cardName: cardName,
+            price: price,
+            sellerId: loggedInPlayerId,
+            sellerName: player.name,
+            timestamp: Date.now()
+        };
+        
+        // 2. Actualizar el inventario del jugador
+        const newCollection = { ...player.card_collection };
+        newCollection[cardName] = newCollection[cardName] - 1;
+        if (newCollection[cardName] === 0) {
+            delete newCollection[cardName]; // Limpiar si ya no tiene
+        }
+        
+        const playerRef = doc(dbPlayersRef, loggedInPlayerId);
+        const marketDocRef = doc(collection(db, dbMarketplaceRef.path));
+        const historyDocRef = doc(collection(db, dbHistoryRef.path));
+        
+        const historyEntry = {
+            text: `${player.name} listó "${cardName}" por ${price} DP.`,
+            timestamp: Date.now(),
+            type: 'market'
+        };
+
+        // Usar un batch para asegurar que todo pase junto
+        const batch = writeBatch(db);
+        batch.set(marketDocRef, newListing); // Añadir al marketplace
+        batch.update(playerRef, { card_collection: newCollection }); // Quitar carta al jugador
+        batch.set(historyDocRef, historyEntry); // Añadir a la historia
+        
+        await batch.commit();
+
+        showFeedback(marketSellFeedback, "¡Carta listada con éxito!", false);
+        marketSellPriceInput.value = '';
+
+    } catch (error) {
+        console.error("Error al listar carta:", error);
+        showFeedback(marketSellFeedback, "Error al listar la carta.", true);
+    } finally {
+        marketSellButton.disabled = false;
+    }
+}
+
+async function handleBuyCardClick(e) {
+    if (!e.target.classList.contains('buy-button')) return;
+
+    const button = e.target;
+    const listingId = button.dataset.listingId;
+    const listing = localMarketplaceCache.get(listingId);
+    
+    if (!listing) {
+        showFeedback(marketBuyFeedback, "Error: Listado no encontrado.", true);
+        return;
+    }
+
+    const buyer = localPlayersCache.get(loggedInPlayerId);
+    if (!buyer) {
+        showFeedback(marketBuyFeedback, "Debes iniciar sesión para comprar.", true);
+        return;
+    }
+
+    const seller = localPlayersCache.get(listing.sellerId);
+
+    if (!seller) {
+        showFeedback(marketBuyFeedback, "Error al encontrar al vendedor. Cancelando.", true);
+        // Si el vendedor no existe (raro), borramos el listado
+        await deleteDoc(doc(dbMarketplaceRef, listingId));
+        return;
+    }
+    if (buyer.dp < listing.price) {
+        showFeedback(marketBuyFeedback, "No tienes suficientes DP para comprar esto.", true);
+        return;
+    }
+    if (buyer.id === seller.id) {
+        showFeedback(marketBuyFeedback, "No puedes comprar tus propias cartas.", true);
+        return;
+    }
+
+    showFeedback(marketBuyFeedback, "Procesando compra...", false, 0);
+    button.disabled = true;
+
+    try {
+        // Calcular comisión y ganancia
+        const fee = Math.floor(listing.price * 0.1);
+        const profit = listing.price - fee;
+
+        // Actualizar comprador
+        const newBuyerDp = buyer.dp - listing.price;
+        const newBuyerCollection = { ...buyer.card_collection };
+        newBuyerCollection[listing.cardName] = (newBuyerCollection[listing.cardName] || 0) + 1;
+
+        // Actualizar vendedor
+        const newSellerDp = seller.dp + profit;
+
+        // Referencias de documentos
+        const buyerRef = doc(dbPlayersRef, buyer.id);
+        const sellerRef = doc(dbPlayersRef, seller.id);
+        const listingRef = doc(dbMarketplaceRef, listingId);
+        
+        // Historial
+        const historyBuyEntry = {
+            text: `${buyer.name} compró "${listing.cardName}" de ${seller.name} por ${listing.price} DP.`,
+            timestamp: Date.now(),
+            type: 'market'
+        };
+        const historySellEntry = {
+            text: `${seller.name} vendió "${listing.cardName}" y recibió ${profit} DP (Comisión de ${fee} DP).`,
+            timestamp: Date.now() + 1,
+            type: 'market'
+        };
+
+        // Batch para la transacción
+        const batch = writeBatch(db);
+        batch.update(buyerRef, { dp: newBuyerDp, card_collection: newBuyerCollection });
+        batch.update(sellerRef, { dp: newSellerDp });
+        batch.delete(listingRef);
+        batch.set(doc(collection(db, dbHistoryRef.path)), historyBuyEntry);
+        batch.set(doc(collection(db, dbHistoryRef.path)), historySellEntry);
+        
+        await batch.commit();
+        
+        showFeedback(marketBuyFeedback, "¡Compra exitosa!", false);
+
+    } catch (error) {
+        console.error("Error al comprar carta:", error);
+        showFeedback(marketBuyFeedback, "Error al procesar la compra.", true);
+    }
+    // El botón se reactivará (o desaparecerá) con el listener del marketplace
+}
+
+// --- [FIN] MÓDULO: marketplace.js ---
 
 
 // --- INICIAR LA APLICACIÓN ---
