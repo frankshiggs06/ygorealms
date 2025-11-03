@@ -42,6 +42,10 @@ function fixSessionPersistence() {
 
 // 3. Función para corregir la barra de eventos en vivo
 function fixLiveEventsTicker() {
+    // Si ya existe una barra de eventos (creada por updates.js), no crear otra ni inyectar CSS antiguo
+    if (document.querySelector('.live-events-ticker')) {
+        return;
+    }
     // Agregar estilos CSS para la barra de eventos
     const style = document.createElement('style');
     style.textContent = `
@@ -243,7 +247,8 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Configurar un observador para actualizar el ticker cuando cambie el historial
         const historyList = document.getElementById('history-list');
-        if (historyList) {
+        // Solo observar historial si NO existe la barra creada por updates.js
+        if (historyList && !document.querySelector('.live-events-ticker')) {
             const observer = new MutationObserver(updateTickerWithLatestEvent);
             observer.observe(historyList, { childList: true, subtree: true });
         }
