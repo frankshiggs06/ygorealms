@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Yu-Gi-Oh!</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./style.css">
+</head>
+<body class="min-h-screen p-4 sm:p-8">
+    <div id="app-content">
+        <header class="header-bg p-4 rounded-lg mb-8 shadow-xl text-white">
+            <img src="./images/header.png" alt="Header" class="mx-auto mb-4" style="max-width: 100%; height: auto;">
+            <div class="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center">
+                <h1 class="text-3xl font-bold tracking-tight mb-2 sm:mb-0"></h1>
+                <nav class="space-x-4">
+                    <a href="index.html" class="hover:text-gray-200 transition duration-150 font-medium">Inicio</a>
+                    <a href="packs.html" class="hover:text-gray-200 transition duration-150 font-medium">Packs</a>
+                    <a href="marketplace.html" class="hover:text-gray-200 transition duration-150 font-medium">Marketplace</a>
+                    <a href="admin.html" class="hover:text-gray-200 transition duration-150 font-medium">Admin</a>
+                    <a href="juegos.html" class="hover:text-gray-200 transition duration-150 font-medium">Juegos</a>
+                </nav>
+            </div>
+            <div class="max-w-6xl mx-auto text-center mt-2 space-y-1">
+                <span class="text-xs text-gray-200 block">Usuario Conectado: <strong id="logged-in-user-display" class="font-mono text-yellow-300">Ninguno</strong></span>
+            </div>
+        </header>
+
+        <main class="max-w-6xl mx-auto space-y-12">
+            <section id="admin" class="card p-6 rounded-xl text-white">
+                <h2 class="text-3xl font-extrabold mb-6 text-red-400 border-b border-red-400/50 pb-2">
+                    ⚙️ Panel de Administración
+                </h2>
+                <!-- Bloqueo de Contraseña -->
+                <div id="admin-lock-screen" class="space-y-4 text-center p-4 bg-gray-700/50 rounded-lg border border-gray-600">
+                    <label for="admin-password" class="block text-lg font-medium text-gray-300 mb-2">Se requiere contraseña de administrador:</label>
+                    <input type="password" id="admin-password" placeholder="Contraseña" class="w-full max-w-sm mx-auto bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <button id="admin-unlock-button" class="w-full max-w-sm mx-auto bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300" disabled>
+                        Desbloquear
+                    </button>
+                    <p id="admin-lock-feedback" class="text-red-400 text-sm mt-2 h-5"></p>
+                    <p class="text-xs text-gray-400">Debes iniciar sesión como usuario primero.</p>
+                </div>
+
+                <!-- Contenido del Admin (oculto por defecto) -->
+                <div id="admin-content" class="hidden">
+                    <!-- Formulario para Registrar Duelos -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                        <div>
+                            <h3 class="text-xl font-bold mb-3 text-gray-100">Registrar Duelo</h3>
+                            <div class="space-y-4">
+                                <div>
+                                    <label for="admin-player-select" class="block text-sm font-medium text-gray-300 mb-2">Ganador:</label>
+                                    <select id="admin-player-select" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                        <option>Cargando...</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="admin-player-select-loser" class="block text-sm font-medium text-gray-300 mb-2">Perdedor:</label>
+                                    <select id="admin-player-select-loser" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                        <option>Cargando...</option>
+                                    </select>
+                                </div>
+                                <div class="flex items-center">
+                                    <input id="admin-surrender-checkbox" type="checkbox" class="h-4 w-4 bg-gray-700 border-gray-600 text-indigo-600 focus:ring-indigo-500 rounded">
+                                    <label for="admin-surrender-checkbox" class="ml-2 block text-sm text-gray-300">
+                                        El perdedor se rindió (Surrender)
+                                    </label>
+                                </div>
+                                <p class="text-xs text-gray-400 -mt-2 ml-6">(+50 DP extra al ganador, -50 DP al perdedor)</p>
+                                
+                                <div class="flex items-center">
+                                    <input id="admin-flawless-checkbox" type="checkbox" class="h-4 w-4 bg-gray-700 border-gray-600 text-indigo-600 focus:ring-indigo-500 rounded">
+                                    <label for="admin-flawless-checkbox" class="ml-2 block text-sm text-gray-300">
+                                        Ganador no perdió LP (Flawless)
+                                    </label>
+                                </div>
+                                <p class="text-xs text-gray-400 -mt-2 ml-6">(+100 DP extra al ganador)</p>
+
+                                <button id="admin-submit-button" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 mt-4">
+                                    Registrar Duelo
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Formulario para Añadir Nuevo Jugador -->
+                        <div>
+                            <h3 class="text-xl font-bold mb-3 text-gray-100">Añadir Nuevo Jugador</h3>
+                            <div class="space-y-4">
+                                <div>
+                                    <label for="admin-new-player-name" class="block text-sm font-medium text-gray-300 mb-2">Nombre:</label>
+                                    <input type="text" id="admin-new-player-name" placeholder="Nombre del Duelista" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                </div>
+                                <div>
+                                    <label for="admin-new-player-password" class="block text-sm font-medium text-gray-300 mb-2">Contraseña:</label>
+                                    <input type="password" id="admin-new-player-password" placeholder="Contraseña del Duelista" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                </div>
+                                <div>
+                                    <label for="admin-new-player-deck" class="block text-sm font-medium text-gray-300 mb-2">Deck Inicial:</label>
+                                    <select id="admin-new-player-deck" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                        <option>Yugi</option>
+                                        <option>Kaiba</option>
+                                        <option>Joey</option>
+                                        <option>Pegasus</option>
+                                        <option>Otro</option>
+                                    </select>
+                                </div>
+                                <button id="admin-add-player-button" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                                    Añadir Jugador
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <p id="admin-feedback" class="text-center text-yellow-300 text-sm mt-2 h-5 feedback-message opacity-0"></p>
+
+                    <!-- Formulario para Modificar DP de Jugadores -->
+                    <div class="mb-8">
+                        <h3 class="text-xl font-bold mb-3 text-gray-100">Modificar DP de Jugador</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label for="admin-dp-player-select" class="block text-sm font-medium text-gray-300 mb-2">Jugador:</label>
+                                <select id="admin-dp-player-select" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                    <option>Cargando...</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="admin-dp-amount" class="block text-sm font-medium text-gray-300 mb-2">Cantidad de DP:</label>
+                                <input type="number" id="admin-dp-amount" placeholder="100" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            </div>
+                            <div class="flex space-x-2 items-end">
+                                <button id="admin-add-dp-button" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                                    <span class="flex items-center justify-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg> Sumar</span>
+                                </button>
+                                <button id="admin-subtract-dp-button" class="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                                    <span class="flex items-center justify-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path></svg> Restar</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Gestión Semanal -->
+                    <hr class="border-gray-600 my-8">
+                    <div>
+                        <h3 class="text-xl font-bold mb-3 text-gray-100">Gestión Semanal</h3>
+                        <p class="text-sm text-gray-400 mb-4">
+                            Al cerrar la semana, se anunciará al ganador en la historia y se reiniciarán todas las victorias semanales a 0.
+                        </p>
+                        <button id="admin-reset-week-button" class="w-full max-w-sm mx-auto bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                            Cerrar Semana y Reiniciar Ranking
+                        </button>
+                        <p id="admin-week-feedback" class="text-center text-yellow-300 text-sm mt-2 h-5 feedback-message opacity-0"></p>
+                    </div>
+
+                    <!-- Inventario de Cartas Adquiridas -->
+                    <hr class="border-gray-600 my-8">
+                    <div>
+                        <h3 class="text-xl font-bold mb-3 text-gray-100">Inventario de Cartas</h3>
+                        <p class="text-sm text-gray-400 mb-4">
+                            Selecciona un jugador para ver todas las cartas que ha adquirido en los packs.
+                        </p>
+                        <div>
+                            <label for="admin-card-inventory-select" class="block text-sm font-medium text-gray-300 mb-2">Seleccionar Jugador:</label>
+                            <select id="admin-card-inventory-select" class="w-full max-w-sm bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <option>Cargando...</option>
+                            </select>
+                        </div>
+                        
+                        <h4 class="text-lg font-semibold mt-6 mb-3 text-gray-200">Colección:</h4>
+                        <ul id="admin-card-inventory-list" class="space-y-2 bg-gray-900 p-4 rounded-lg border border-gray-600 min-h-[150px] max-h-60 overflow-y-auto">
+                            <li class="text-gray-400">Selecciona un jugador para ver su inventario.</li>
+                        </ul>
+                    </div>
+
+                    <!-- NUEVO: Reseteo de Fábrica -->
+                    <hr class="border-gray-600 my-8">
+                    <div>
+                        <h3 class="text-xl font-bold mb-3 text-red-400">Zona de Peligro - Reseteo Total</h3>
+                        <p class="text-sm text-gray-400 mb-4">
+                            Esto borrará TODOS los jugadores, CUALQUIER inventario, TODA la historia y TODOS los listados del marketplace.
+                            La base de datos se reiniciará con los 3 jugadores base en 0 DP. Esta acción es irreversible.
+                        </p>
+                        <button id="admin-factory-reset-button" class="w-full max-w-sm mx-auto bg-red-800 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg transition-all duration-300 factory-reset-button" data-confirmed="false">
+                            Iniciar Reseteo de Fábrica
+                        </button>
+                        <p id="admin-reset-feedback" class="text-center text-red-300 text-sm mt-2 h-5 feedback-message opacity-0"></p>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="mt-12 text-center text-gray-400 text-sm">
+            <p>© 2025 YGO Realms</p>
+            <p>Hecho para el seguimiento de tu duelo.</p>
+        </footer>
+    </div>
+
+    <!-- Scripts principales -->
+    <script type="module" src="./main.js"></script>
+    <script type="module">
+        import { isLoggedIn, initializeAuth, updateUserDisplay, onSessionChange } from './auth.js';
+        import { initLiveEventsTicker } from './updates.js';
+        import { initAdmin } from './main.js';
+        
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                await initializeAuth();
+                
+                if (!isLoggedIn()) {
+                    window.location.href = 'login.html';
+                } else {
+                    // 1. Actualizar la información del usuario en la página
+                    updateUserDisplay();
+                    
+                    // 2. Inicializar funcionalidades específicas de admin
+                    initAdmin();
+                    
+                    // 3. Suscribirse a cambios de sesión
+                    onSessionChange(() => {
+                        updateUserDisplay();
+                    });
+
+                    // 4. Inicializar la barra de eventos en vivo
+                    initLiveEventsTicker();
+                }
+            } catch (error) {
+                console.error("Error al inicializar la página de admin:", error);
+            }
+        });
+    </script>
+</body>    
+    <!-- Verificación de sesión e inicialización de funcionalidades -->
+    <script type="module">
+        import { isLoggedIn, initializeAuth, updateUserDisplay, onSessionChange } from './auth.js';
+        import { initAdmin, updateAdminDropdowns, updateCardInventoryView } from './main.js';
+        
+        document.addEventListener('DOMContentLoaded', async () => {
+            await initializeAuth();
+            
+            if (!isLoggedIn()) {
+                window.location.href = 'login.html';
+            } else {
+                updateUserDisplay();
+                initAdmin(); // Inicializar funcionalidades del panel admin
+                updateAdminDropdowns(); // Actualizar dropdowns del admin
+                
+                onSessionChange(() => {
+                    updateUserDisplay();
+                    updateAdminDropdowns(); // Actualizar dropdowns cuando cambie la sesión
+                });
+            }
+        });
+    </script>
+</body>
+</html>

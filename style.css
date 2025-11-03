@@ -1,0 +1,526 @@
+:root {
+    --purple-900: #1b1030;
+    --purple-800: #3a005f;
+    --purple-700: #5a008f;
+    --black-900: #0b0614;
+    --gray-800: #1f2937;
+    --gray-500: #6b7280;
+    --white: #ffffff;
+    --gold: #fcd34d;
+    --accent: #a020f0;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--black-900);
+    background-image: radial-gradient(1200px 600px at 20% 10%, rgba(160,32,240,0.15), transparent 60%),
+                      radial-gradient(900px 500px at 80% 20%, rgba(58,0,95,0.25), transparent 65%),
+                      radial-gradient(800px 600px at 50% 90%, rgba(12,10,25,0.5), transparent 70%);
+    background-attachment: fixed;
+    font-size: 0.95rem;
+}
+
+/* Fondo estático: animaciones eliminadas por rendimiento */
+
+
+
+
+
+
+
+/* Reducción del tamaño de los títulos */
+h2 {
+    font-size: 1.25rem !important; /* Tamaño más pequeño para todos los títulos h2 */
+}
+
+.text-3xl {
+    font-size: 1.5rem !important; /* Reducción del tamaño para la clase text-3xl */
+}
+
+.text-2xl {
+    font-size: 1.25rem !important; /* Reducción del tamaño para la clase text-2xl */
+}
+/* Mejora de títulos y jerarquía visual */
+h1, h2, h3 {
+    letter-spacing: 0.02em;
+    text-shadow: 0 2px 12px rgba(160,32,240,0.35);
+}
+header h1 {
+    background-image: linear-gradient(90deg, #ffffff 0%, #d1d5db 50%, #ffffff 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+.card {
+    box-shadow: 0 18px 28px -10px rgba(0,0,0,0.55), inset 0 0 24px rgba(160,32,240,0.22);
+    background: linear-gradient(180deg, rgba(30,17,43,0.65), rgba(14,10,24,0.55));
+    border: 1px solid rgba(160,32,240,0.35);
+    backdrop-filter: blur(8px) saturate(1.05);
+}
+.header-bg {
+    background-image: linear-gradient(135deg, rgba(58,0,95,0.65), rgba(14,10,24,0.55));
+    color: var(--white);
+    border: 1px solid rgba(160,32,240,0.30);
+    backdrop-filter: blur(6px);
+}
+.dp-score {
+    text-shadow: 0 0 10px rgba(252,211,77,0.6);
+}
+
+/* Estilos para feedback */
+.feedback-message {
+    transition: opacity 0.5s ease-out;
+}
+/* Estilos para el modal */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+    transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+}
+.modal-content {
+    background: linear-gradient(180deg, rgba(30,17,43,0.72), rgba(14,10,24,0.58));
+    color: var(--white);
+    border-radius: 0.75rem; /* rounded-xl */
+    box-shadow: 0 30px 60px -18px rgba(0,0,0,0.45), inset 0 0 22px rgba(160,32,240,0.24);
+    padding: 1.5rem; /* p-6 */
+    width: 100%;
+    max-width: 32rem; /* max-w-lg */
+    border: 1px solid rgba(160,32,240,0.35);
+    backdrop-filter: blur(10px) saturate(1.06);
+}
+
+  .pack-image {
+    max-width: 100%;
+    height: 150px; /* Altura fija para todas las imágenes */
+    object-fit: contain; /* Asegura que la imagen completa sea visible */
+    margin-left: auto;
+    margin-right: auto;
+  }
+.game-card {
+    background-color: #3a005f; /* Púrpura oscuro */
+    border-radius: 0.75rem; /* rounded-xl */
+    padding: 1.5rem; /* p-6 */
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    border: 2px solid #5a008f; /* Púrpura más claro para el borde */
+    transition: all 0.3s ease;
+}
+.game-card:not(.disabled) {
+    cursor: pointer;
+}
+.game-card:not(.disabled):hover {
+    border-color: #ec4899; /* pink-500 */
+    transform: translateY(-5px);
+}
+.game-card.disabled {
+    opacity: 0.5;
+    background-color: #1f2937; /* gray-800 */
+}
+.game-card button:disabled {
+    pointer-events: none; /* Permite que el contenedor reciba el clic */
+}
+.game-card-title {
+    font-size: 1.25rem; /* text-xl */
+    font-weight: 700; /* font-bold */
+    color: #ffffff; /* Blanco para los títulos */
+}
+.game-card-description {
+    font-size: 0.875rem; /* text-sm */
+    color: #9ca3af; /* gray-400 */
+    margin-top: 0.5rem; /* mt-2 */
+    margin-bottom: 1rem; /* mb-4 */
+    flex-grow: 1;
+}
+
+/* Estilos para el juego Eternals BetCards */
+#game-1-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin: 1.5rem 0;
+}
+.bet-card {
+    aspect-ratio: 2.5 / 3.5;
+    background-color: #4b5563; /* gray-600 */
+    border-radius: 0.5rem; /* rounded-lg */
+    cursor: pointer;
+    border: 3px solid transparent;
+    transition: all 0.3s ease;
+    transform-style: preserve-3d;
+    position: relative;
+}
+.bet-card:hover {
+    border-color: #fcd34d; /* yellow-300 */
+}
+.bet-card .card-face {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    backface-visibility: hidden;
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1rem;
+}
+.bet-card .card-front {
+    /* Patrón de dorso de carta Yu-Gi-Oh! (simplificado) */
+    background-color: #1e3a8a; /* blue-800 */
+    background-image: radial-gradient(#fcd34d 20%, transparent 20%),
+                      radial-gradient(#fcd34d 20%, transparent 20%);
+    background-position: 0 0, 50px 50px;
+    background-size: 10px 10px;
+}
+.bet-card .card-back {
+    transform: rotateY(180deg);
+}
+.bet-card .card-back.win {
+    background-color: #ca8a04; /* yellow-600 */
+    color: #1f2937;
+    border: 2px solid #fde047; /* yellow-200 */
+}
+.bet-card .card-back.lose {
+    background-color: #374151; /* gray-700 */
+    color: #9ca3af;
+    border: 2px solid #4b5563; /* gray-600 */
+}
+
+.bet-card.is-flipped {
+    transform: rotateY(180deg);
+}
+.bet-card.chosen {
+    border-color: #22c55e; /* green-500 */
+    box-shadow: 0 0 20px #22c55e;
+}
+
+/* Estilos para botones de apuesta */
+.bet-button {
+    padding: 0.75rem 1.5rem;
+    border-radius: 9999px; /* rounded-full */
+    background-image: linear-gradient(to right, var(--purple-700), var(--purple-800));
+    border: 1px solid rgba(160,32,240,0.35);
+    color: var(--white);
+    font-weight: 700;
+    transition: all 0.3s ease;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+}
+.bet-button:hover:not(:disabled) {
+    background-image: linear-gradient(to right, var(--purple-800), var(--purple-700));
+    transform: translateY(-2px);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
+}
+.bet-button.selected {
+    background-image: linear-gradient(to right, #8a2be2, #a020f0);
+    border-color: #a020f0;
+    color: var(--white);
+    box-shadow: 0 0 20px rgba(160,32,240,0.55);
+}
+.bet-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+/* Estilos para secciones desplegables */
+.section-title {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 0.5rem;
+    color: #ffffff; /* Blanco para los títulos de sección */
+}
+
+.section-title::after {
+    content: '▼';
+    font-size: 0.8rem;
+    transition: transform 0.3s ease;
+}
+
+.section-title.collapsed::after {
+    transform: rotate(-90deg);
+}
+
+.section-content {
+    transition: max-height 0.5s ease, opacity 0.5s ease;
+    max-height: 2000px;
+    opacity: 1;
+    overflow: visible; /* permitir tooltips fuera del contenido de la sección */
+}
+
+.section-content.collapsed {
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden; /* ocultar contenido cuando la sección está colapsada */
+}
+
+/* Estilos Juego 2: Duelo de Dados */
+#game-2-dice-container {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin: 1.5rem 0;
+    min-height: 80px;
+}
+.dice {
+    width: 80px;
+    height: 80px;
+    background-color: #5a008f; /* Púrpura medio para diferenciar del modal */
+    border: 3px solid #a020f0; /* Borde para hacerlos visibles */
+    box-shadow: 0 6px 12px rgba(0,0,0,0.35);
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3rem;
+    font-weight: bold;
+    color: #ffffff; /* Texto blanco */
+}
+
+/* Estilos Juego 3: Moneda */
+#game-3-coin {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    margin: 1.5rem auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    font-weight: bold;
+    color: #ffffff; /* Texto blanco */
+    background-color: #8a2be2; /* Púrpura */
+    border: 5px solid #a020f0; /* Púrpura más claro */
+    transition: transform 0.5s;
+}
+
+/* Giro idle de la moneda antes de elegir */
+@keyframes coinSpin {
+    from { transform: rotateY(0deg); }
+    to { transform: rotateY(360deg); }
+}
+.coin.spin {
+    animation: coinSpin 0.8s linear infinite;
+}
+
+/* --- POPUP DE RULETA DE STARTER DECK --- */
+.starter-wheel-container {
+    position: relative;
+    width: 260px;
+    height: 260px;
+}
+.starter-wheel {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    border: 6px solid #a020f0; /* borde púrpura para integrarse al tema */
+    box-shadow: 0 12px 24px rgba(0,0,0,0.35), inset 0 0 18px rgba(160,32,240,0.35);
+    background: conic-gradient(
+        #ef4444 0deg 90deg,   /* Yugi rojo */
+        #22c55e 90deg 180deg, /* Kaiba verde */
+        #3b82f6 180deg 270deg,/* Joey azul */
+        #f59e0b 270deg 360deg /* Pegasus dorado */
+    );
+    transition: transform 2.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.starter-wheel:hover .wheel-label {
+    transform: scale(1.06);
+}
+.wheel-pointer {
+    position: absolute;
+    top: -12px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 12px solid transparent;
+    border-right: 12px solid transparent;
+    border-bottom: 18px solid #fcd34d; /* amarillo */
+    filter: drop-shadow(0 2px 6px rgba(0,0,0,0.4));
+}
+.wheel-label {
+    position: absolute;
+    color: #fff;
+    font-weight: 800;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.35);
+    transition: transform 0.2s ease;
+    font-size: 0.95rem;
+    padding: 4px 8px;
+    border-radius: 9999px;
+    background: rgba(0,0,0,0.15);
+}
+.label-yugi { top: 30%; left: 70%; transform: translate(-50%, -50%); }
+.label-kaiba { top: 70%; left: 70%; transform: translate(-50%, -50%); }
+.label-joey { top: 70%; left: 30%; transform: translate(-50%, -50%); }
+.label-pegasus { top: 30%; left: 30%; transform: translate(-50%, -50%); }
+
+/* --- NUEVOS ESTILOS PARA MARKETPLACE --- */
+.market-table th, .market-table td {
+    padding: 0.75rem 0.5rem; /* py-3 px-2 */
+    text-align: left;
+    font-size: 0.875rem; /* text-sm */
+    white-space: nowrap;
+}
+.market-table th {
+    color: #e0b0ff; /* Púrpura claro para encabezados */
+    text-transform: uppercase;
+    font-weight: 600; /* font-semibold */
+}
+.market-table td {
+    color: #ffffff; /* Blanco para el texto de la tabla */
+}
+.market-table .card-name {
+    font-weight: 600;
+    color: #e0b0ff; /* Púrpura claro para nombres de cartas */
+}
+.market-table .card-price {
+    font-weight: 700;
+    color: #ffffff; /* Blanco para precios de cartas */
+}
+.market-table .buy-button {
+    background-image: linear-gradient(to right, #8a2be2, #a020f0); /* Degradado púrpura */
+    color: white;
+    padding: 0.35rem 1rem; /* py-1 px-3 */
+    border-radius: 9999px; /* rounded-full */
+    font-weight: 700;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+}
+.market-table .buy-button:hover:not(:disabled) {
+    background-image: linear-gradient(to right, #a020f0, #8a2be2); /* Degradado inverso en hover */
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+.market-table .buy-button:disabled {
+    background-color: #4b5563; /* gray-600 */
+    opacity: 0.6;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+/* --- NUEVOS ESTILOS PARA ADMIN RESET --- */
+.factory-reset-button {
+    background-image: linear-gradient(to right, #dc2626, #ef4444); /* Degradado rojo */
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 9999px; /* rounded-full */
+    font-weight: 700;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    border: none;
+}
+.factory-reset-button:hover:not(:disabled) {
+    background-image: linear-gradient(to right, #ef4444, #dc2626); /* Degradado inverso en hover */
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+.factory-reset-button[data-confirmed="true"] {
+    background-image: linear-gradient(to right, #fca5a5, #f87171); /* Degradado rojo más claro */
+    color: #7f1d1d; /* red-900 */
+    font-weight: 900;
+    border: none;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+/* --- CONSTRUCTOR DE DECK --- */
+#deck-builder-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(48px, 1fr));
+    gap: 6px;
+    align-items: start;
+    overflow: visible; /* permitir que tooltips salgan del grid */
+}
+
+.deck-card {
+    position: relative;
+    width: 48px;
+    height: 64px;
+    border-radius: 6px;
+    background: linear-gradient(135deg, rgba(59, 7, 100, 0.75), rgba(17, 24, 39, 0.85));
+    border: 1px solid rgba(160, 32, 240, 0.5);
+    overflow: visible; /* permite que el tooltip emerja fuera de la carta */
+    cursor: pointer;
+    transition: transform 120ms ease, filter 150ms ease, box-shadow 150ms ease;
+}
+
+.deck-card:hover {
+    transform: translateY(-2px) scale(1.08);
+    filter: saturate(1.3);
+    z-index: 10; /* asegura que el tooltip quede por encima de las cartas vecinas */
+}
+
+.deck-card .mini-art {
+    position: absolute;
+    inset: 4px;
+    border-radius: 4px;
+    background: radial-gradient(circle at 30% 30%, rgba(250, 204, 21, 0.15), transparent 40%),
+                radial-gradient(circle at 70% 70%, rgba(59, 130, 246, 0.15), transparent 40%),
+                linear-gradient(145deg, rgba(99, 102, 241, 0.15), rgba(236, 72, 153, 0.15));
+}
+
+.deck-card .card-glow {
+    position: absolute;
+    inset: -40%;
+    background: radial-gradient(circle, rgba(255,255,255,0.12), transparent 60%);
+    transform: scale(0.65);
+    transition: transform 120ms ease, opacity 120ms ease;
+    opacity: 0;
+}
+
+.deck-card:hover .card-glow {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.deck-card .card-tooltip {
+    position: absolute;
+    left: 50%;
+    bottom: 0; /* El tooltip parte justo en el borde inferior */
+    transform: translate(-50%, calc(100% + 8px)); /* Aparece fuera de la carta */
+    min-width: 180px;
+    background: rgba(31, 41, 55, 0.95);
+    color: #fff;
+    border: 1px solid rgba(160, 32, 240, 0.5);
+    border-radius: 8px;
+    padding: 8px 10px;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.35), 0 0 18px rgba(160, 32, 240, 0.25);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 120ms ease, transform 120ms ease;
+    white-space: nowrap;
+    z-index: 1000; /* por encima de todas las capas cercanas */
+}
+
+.deck-card:hover .card-tooltip {
+    opacity: 1;
+    transform: translate(-50%, calc(100% + 8px)); /* Mantener fuera mientras se muestra */
+}
+
+.card-title {
+    display: block;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+}
+.card-rarity { color: #f0abfc; display: block; }
+.card-pack { color: #93c5fd; display: block; }
+
+/* Indicador de cantidad dentro del tooltip */
+.card-count {
+    display: inline-block;
+    margin-top: 4px;
+    font-weight: 700;
+    color: #fcd34d; /* amarillo para destacar */
+}
+
+/* Rarezas: bordes / brillos diferenciados */
+.rarity-common { box-shadow: inset 0 0 0 1px rgba(156,163,175,0.5); }
+.rarity-rare { box-shadow: inset 0 0 0 1px rgba(59,130,246,0.5), 0 0 8px rgba(59,130,246,0.35); }
+.rarity-superRare { box-shadow: inset 0 0 0 1px rgba(139,92,246,0.6), 0 0 10px rgba(236,72,153,0.35); }
+.rarity-ultraRare { box-shadow: inset 0 0 0 1px rgba(250,204,21,0.8), 0 0 12px rgba(250,204,21,0.45); }

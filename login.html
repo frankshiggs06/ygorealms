@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar Sesión - Yu-Gi-Oh!</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./style.css">
+</head>
+<body class="min-h-screen flex items-center justify-center p-4" style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);">
+    <!-- Video de fondo (opcional) -->
+    <video id="loginVideo" autoplay loop class="fixed inset-0 w-full h-full object-cover z-0 opacity-30">
+        <source src="./video/login_video.mp4" type="video/mp4">
+    </video>
+
+    <!-- Contenedor principal de login -->
+    <div class="relative z-10 w-full max-w-md">
+        <!-- Logo/Header -->
+        <div class="text-center mb-8">
+            <img src="./images/header.png" alt="Yu-Gi-Oh! Header" class="mx-auto mb-4 max-w-full h-auto">
+            <h1 class="text-4xl font-bold text-white mb-2">Yu-Gi-Oh! Tracker</h1>
+            <p class="text-gray-300">Inicia sesión para acceder al sistema</p>
+        </div>
+
+        <!-- Formulario de login -->
+        <div id="login-section" class="bg-gray-800/90 backdrop-blur-sm p-8 rounded-xl shadow-2xl border border-gray-700">
+            <h2 class="text-2xl font-bold text-white mb-6 text-center">Iniciar Sesión</h2>
+            
+            <form id="login-form" class="space-y-6">
+                <div>
+                    <label for="username" class="block text-gray-300 mb-2 font-medium">Usuario</label>
+                    <input 
+                        type="text" 
+                        id="username" 
+                        name="username"
+                        class="w-full bg-gray-700/80 text-white px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-gray-700 transition duration-300 border border-gray-600"
+                        placeholder="Ingresa tu nombre de usuario"
+                        required
+                    >
+                </div>
+                
+                <div>
+                    <label for="password" class="block text-gray-300 mb-2 font-medium">Contraseña</label>
+                    <input 
+                        type="password" 
+                        id="password" 
+                        name="password"
+                        class="w-full bg-gray-700/80 text-white px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-gray-700 transition duration-300 border border-gray-600"
+                        placeholder="Ingresa tu contraseña"
+                        required
+                    >
+                </div>
+                
+                <button 
+                    type="submit" 
+                    id="login-button"
+                    class="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-3 px-4 rounded-lg transition duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                    <span id="login-button-text">Entrar</span>
+                </button>
+            </form>
+
+            <!-- Feedback messages -->
+            <div class="mt-4 space-y-2">
+                <p id="login-feedback" class="text-red-400 text-sm text-center min-h-[20px]"></p>
+                <p id="db-loading-feedback" class="text-yellow-400 text-sm text-center">Conectando a la base de datos...</p>
+            </div>
+
+            <!-- Enlace de registro -->
+            <div class="mt-6 pt-6 border-t border-gray-600">
+                <p class="text-gray-300 text-xs text-center">
+                    ¿No tienes cuenta?
+                    <button id="show-register" class="text-blue-400 hover:underline text-[0.8rem]">Crea una cuenta</button>
+                </p>
+            </div>
+        </div>
+
+        <!-- Formulario de registro (oculto inicialmente) -->
+        <div id="register-section" class="bg-gray-800/90 backdrop-blur-sm p-6 rounded-xl shadow-2xl border border-gray-700 mt-4 hidden">
+            <h2 class="text-xl font-semibold text-white mb-4 text-center">Crear cuenta</h2>
+            <form id="register-form" class="space-y-4">
+                <div>
+                    <label for="register-username" class="block text-gray-300 mb-2 font-medium">Nombre de Usuario</label>
+                    <input type="text" id="register-username" class="w-full bg-gray-700/80 text-white px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-gray-700 transition duration-300 border border-gray-600" placeholder="Tu nombre" required>
+                </div>
+                <div>
+                    <label for="register-password" class="block text-gray-300 mb-2 font-medium">Contraseña</label>
+                    <input type="password" id="register-password" class="w-full bg-gray-700/80 text-white px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-gray-700 transition duration-300 border border-gray-600" placeholder="Tu contraseña" required>
+                </div>
+                <div>
+                    <label for="register-email" class="block text-gray-300 mb-2 font-medium">Correo</label>
+                    <input type="email" id="register-email" class="w-full bg-gray-700/80 text-white px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-gray-700 transition duration-300 border border-gray-600" placeholder="tu@correo.com" required>
+                </div>
+                <div class="flex gap-3">
+                    <button type="submit" id="register-button" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Registrar</button>
+                    <button type="button" id="cancel-register" class="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Cancelar</button>
+                </div>
+            </form>
+            <p id="register-feedback" class="text-sm text-center mt-3 min-h-[20px]"></p>
+        </div>
+
+        <!-- Footer -->
+        <div class="text-center mt-8">
+            <p class="text-gray-400 text-sm">© 2025 YGO Realms</p>
+            <p class="text-gray-500 text-xs">Hecho para el seguimiento de tu duelo</p>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script type="module">
+        import { initializeAuth, attemptLogin, isLoggedIn, registerUser } from './auth.js';
+
+        // Variables del DOM
+        const loginForm = document.getElementById('login-form');
+        const usernameInput = document.getElementById('username');
+        const passwordInput = document.getElementById('password');
+        const loginButton = document.getElementById('login-button');
+        const loginButtonText = document.getElementById('login-button-text');
+        const loginFeedback = document.getElementById('login-feedback');
+        const dbLoadingFeedback = document.getElementById('db-loading-feedback');
+        const loginVideo = document.getElementById('loginVideo');
+        const showRegisterBtn = document.getElementById('show-register');
+        const loginSection = document.getElementById('login-section');
+        const registerSection = document.getElementById('register-section');
+        const registerForm = document.getElementById('register-form');
+        const registerUsername = document.getElementById('register-username');
+        const registerPassword = document.getElementById('register-password');
+        const registerEmail = document.getElementById('register-email');
+        const registerFeedback = document.getElementById('register-feedback');
+        const cancelRegisterBtn = document.getElementById('cancel-register');
+
+        // Configurar video: audio la primera reproducción y luego silenciar
+        if (loginVideo) {
+            const hasHeardOnce = localStorage.getItem('loginVideoAudioOnce') === 'true';
+            // Mantener reproducción en bucle
+            loginVideo.addEventListener('ended', () => {
+                loginVideo.currentTime = 0;
+                loginVideo.play();
+            });
+
+            // Volumen por defecto
+            loginVideo.volume = 0.6;
+
+            if (!hasHeardOnce) {
+                const enableAudioOnce = async () => {
+                    try {
+                        loginVideo.muted = false;
+                        loginVideo.currentTime = 0; // empezar desde el principio con audio
+                        await loginVideo.play();
+
+                        // Silenciar tras 8 segundos en la primera reproducción
+                        const muteAfterMs = 8000;
+                        setTimeout(() => {
+                            loginVideo.muted = true;
+                            localStorage.setItem('loginVideoAudioOnce', 'true');
+                        }, muteAfterMs);
+                    } catch (err) {
+                        // Si el navegador bloquea autoplay con audio, intentaremos al siguiente gesto
+                        console.warn('Autoplay con audio bloqueado; esperando interacción del usuario.', err);
+                    }
+                };
+
+                // Usar el primer gesto del usuario como permiso para reproducir con audio
+                window.addEventListener('pointerdown', enableAudioOnce, { once: true });
+                window.addEventListener('keydown', enableAudioOnce, { once: true });
+            } else {
+                // Si ya se escuchó una vez, mantener silenciado
+                loginVideo.muted = true;
+            }
+        }
+
+        // Función para mostrar feedback
+        function showFeedback(message, isError = false, duration = 3000) {
+            loginFeedback.textContent = message;
+            loginFeedback.className = isError 
+                ? 'text-red-400 text-sm text-center min-h-[20px]' 
+                : 'text-green-400 text-sm text-center min-h-[20px]';
+            
+            if (duration > 0) {
+                setTimeout(() => {
+                    loginFeedback.textContent = '';
+                }, duration);
+            }
+        }
+
+        function showRegisterFeedback(message, isError = false, duration = 3000) {
+            registerFeedback.textContent = message;
+            registerFeedback.className = isError 
+                ? 'text-red-400 text-sm text-center min-h-[20px]'
+                : 'text-green-400 text-sm text-center min-h-[20px]';
+            if (duration > 0) {
+                setTimeout(() => { registerFeedback.textContent = ''; }, duration);
+            }
+        }
+
+        // Función para cambiar estado del botón
+        function setButtonLoading(loading) {
+            loginButton.disabled = loading;
+            loginButtonText.textContent = loading ? 'Conectando...' : 'Entrar';
+            if (loading) {
+                loginButton.classList.add('opacity-75', 'cursor-not-allowed');
+            } else {
+                loginButton.classList.remove('opacity-75', 'cursor-not-allowed');
+            }
+        }
+
+        function setRegisterLoading(loading) {
+            const btn = document.getElementById('register-button');
+            btn.disabled = loading;
+            btn.textContent = loading ? 'Registrando...' : 'Registrar';
+            btn.classList.toggle('opacity-75', loading);
+            btn.classList.toggle('cursor-not-allowed', loading);
+        }
+
+        // Manejar envío del formulario
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const username = usernameInput.value.trim();
+            const password = passwordInput.value;
+
+            if (!username || !password) {
+                showFeedback('Por favor completa todos los campos', true);
+                return;
+            }
+
+            setButtonLoading(true);
+            
+            try {
+                const result = attemptLogin(username, password);
+                
+                if (result.success) {
+                    showFeedback('¡Inicio de sesión exitoso! Redirigiendo...', false, 1000);
+                    
+                    // Redirigir después de un breve delay
+                    setTimeout(() => {
+                        window.location.href = 'index.html';
+                    }, 1000);
+                } else {
+                    showFeedback(result.message, true);
+                    setButtonLoading(false);
+                }
+            } catch (error) {
+                console.error('Error en login:', error);
+                showFeedback('Error al iniciar sesión. Inténtalo de nuevo.', true);
+                setButtonLoading(false);
+            }
+        });
+
+        // Mostrar/Ocultar registro
+        showRegisterBtn.addEventListener('click', () => {
+            registerSection.classList.remove('hidden');
+            loginSection.classList.add('hidden');
+            usernameInput.value = '';
+            passwordInput.value = '';
+        });
+
+        cancelRegisterBtn.addEventListener('click', () => {
+            registerSection.classList.add('hidden');
+            loginSection.classList.remove('hidden');
+        });
+
+        // Manejar registro
+        registerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = registerUsername.value.trim();
+            const pass = registerPassword.value;
+            const mail = registerEmail.value.trim();
+
+            if (!name || !pass || !mail) {
+                showRegisterFeedback('Completa todos los campos', true);
+                return;
+            }
+
+            setRegisterLoading(true);
+            try {
+                const res = await registerUser(name, pass, mail);
+                if (res.success) {
+                    showRegisterFeedback('Registro exitoso. Vuelve al inicio de sesión.', false, 1500);
+                    // volver al inicio de sesión
+                    setTimeout(() => {
+                        registerSection.classList.add('hidden');
+                        loginSection.classList.remove('hidden');
+                        // opcional: rellenar usuario
+                        usernameInput.value = name;
+                        passwordInput.value = '';
+                    }, 1500);
+                } else {
+                    showRegisterFeedback(res.message || 'No se pudo registrar.', true);
+                }
+            } catch (err) {
+                console.error('Error en registro:', err);
+                showRegisterFeedback('Error inesperado. Intenta nuevamente.', true);
+            } finally {
+                setRegisterLoading(false);
+            }
+        });
+
+        // Inicializar autenticación
+        async function init() {
+            try {
+                await initializeAuth();
+                
+                // Si ya está logueado, redirigir
+                if (isLoggedIn()) {
+                    window.location.href = 'index.html';
+                    return;
+                }
+                
+                dbLoadingFeedback.textContent = '¡Conexión exitosa!';
+                dbLoadingFeedback.className = 'text-green-400 text-sm text-center';
+                
+                // Ocultar mensaje después de 2 segundos
+                setTimeout(() => {
+                    dbLoadingFeedback.textContent = '';
+                }, 2000);
+                
+            } catch (error) {
+                console.error('Error al inicializar:', error);
+                dbLoadingFeedback.textContent = 'Error al conectar con la base de datos';
+                dbLoadingFeedback.className = 'text-red-400 text-sm text-center';
+            }
+        }
+
+        // Inicializar cuando el DOM esté listo
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
+

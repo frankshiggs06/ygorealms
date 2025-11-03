@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Marketplace - Yu-Gi-Oh!</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./style.css">
+</head>
+<body class="min-h-screen p-4 sm:p-8">
+    <div id="app-content">
+        <header class="header-bg p-4 rounded-lg mb-8 shadow-xl text-white">
+            <img src="./images/header.png" alt="Header" class="mx-auto mb-4" style="max-width: 100%; height: auto;">
+            <div class="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center">
+                <h1 class="text-3xl font-bold tracking-tight mb-2 sm:mb-0">Yu-Gi-Oh! Tracker</h1>
+                <nav class="space-x-4">
+                    <a href="index.html" class="hover:text-gray-200 transition duration-150 font-medium">Inicio</a>
+                    <a href="packs.html" class="hover:text-gray-200 transition duration-150 font-medium">Packs</a>
+                    <a href="marketplace.html" class="hover:text-gray-200 transition duration-150 font-medium">Marketplace</a>
+                    <a href="admin.html" class="hover:text-gray-200 transition duration-150 font-medium">Admin</a>
+                    <a href="juegos.html" class="hover:text-gray-200 transition duration-150 font-medium">Juegos</a>
+                </nav>
+            </div>
+            <div class="max-w-6xl mx-auto text-center mt-2 space-y-1">
+                <span class="text-xs text-gray-200 block">Usuario Conectado: <strong id="logged-in-user-display" class="font-mono text-yellow-300">Ninguno</strong></span>
+            </div>
+        </header>
+
+        <main class="max-w-6xl mx-auto space-y-12">
+            <section id="marketplace" class="card p-6 rounded-xl text-white">
+                <h2 class="text-3xl font-extrabold mb-6 text-teal-400 border-b border-teal-400/50 pb-2">
+                    🔄 Marketplace
+                </h2>
+                <p class="text-gray-300 mb-6">
+                    Compra y vende cartas con otros duelistas. La casa cobra una comisión del 10% sobre todas las ventas.
+                </p>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    
+                    <div>
+                        <h3 class="text-xl font-bold mb-4 text-gray-100">Vender una Carta</h3>
+                        <div class="space-y-4 p-4 bg-gray-700/50 rounded-lg border border-gray-600">
+                            <div>
+                                <label for="market-sell-card-select" class="block text-sm font-medium text-gray-300 mb-2">Carta de tu Inventario:</label>
+                                <select id="market-sell-card-select" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                    <option>Carga tu inventario...</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="market-sell-price" class="block text-sm font-medium text-gray-300 mb-2">Precio de Venta (DP):</label>
+                                <input type="number" id="market-sell-price" min="1" placeholder="Ej: 500" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-teal-500">
+                            </div>
+                            <button id="market-sell-button" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                                Poner en Venta
+                            </button>
+                            <p id="market-sell-feedback" class="text-center text-yellow-300 text-sm h-5 feedback-message opacity-0"></p>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h3 class="text-xl font-bold mb-4 text-gray-100">Listados Actuales</h3>
+                        <div class="overflow-y-auto max-h-[400px] bg-gray-900 p-2 rounded-lg border border-gray-600">
+                            <table class="min-w-full divide-y divide-gray-700 market-table">
+                                <thead class="bg-gray-700 sticky top-0">
+                                    <tr>
+                                        <th scope="col">Carta</th>
+                                        <th scope="col">Precio</th>
+                                        <th scope="col">Vendedor</th>
+                                        <th scope="col">Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="market-listings-body" class="divide-y divide-gray-800">
+                                    <tr><td colspan="4" class="px-3 py-4 text-center text-gray-400">Cargando listados...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <p id="market-buy-feedback" class="text-center text-yellow-300 text-sm h-5 mt-4 feedback-message opacity-0"></p>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+    
+    <footer class="mt-12 text-center text-gray-400 text-sm">
+        <p>© 2025 YGO Realms</p>
+        <p>Hecho para el seguimiento de tu duelo.</p>
+    </footer>
+
+    <script type="module" src="./main.js"></script>
+    <script type="module">
+        import { isLoggedIn, initializeAuth, updateUserDisplay, onSessionChange, sessionManager } from './auth.js';
+        import { initLiveEventsTicker } from './updates.js';
+        
+        // --- ¡AQUÍ ESTÁ LA CORRECCIÓN! ---
+        // Importamos las funciones específicas que esta página necesita desde main.js
+        import { initMarketplace, updateMarketplaceSellDropdown, updateMarketplaceListings } from './main.js';
+        
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                await initializeAuth(); // Espera a que auth.js conecte y cargue datos
+                
+                // Espera un momento para asegurar que los datos se han cargado completamente
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                if (!isLoggedIn()) {
+                    window.location.href = 'login.html';
+                } else {
+                    // 1. Actualizar la información del usuario en la página
+                    updateUserDisplay();
+                    
+                    // 2. ¡CORRECCIÓN! Llamar a las funciones importadas
+                    initMarketplace();
+                    updateMarketplaceSellDropdown();
+                    updateMarketplaceListings();
+                    
+                    // 3. Suscribirse a cambios de sesión
+                    onSessionChange(() => {
+                        updateUserDisplay();
+                        updateMarketplaceSellDropdown();
+                        updateMarketplaceListings();
+                    });
+
+                    // 4. Inicializar la barra de eventos en vivo
+                    initLiveEventsTicker();
+                }
+            } catch (error) {
+                console.error("Error al inicializar la página de marketplace:", error);
+            }
+        });
+    </script>
+</body>
+</html>

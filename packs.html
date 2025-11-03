@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Packs - Yu-Gi-Oh!</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./style.css">
+</head>
+<body class="min-h-screen p-4 sm:p-8">
+    <div id="app-content">
+        <header class="header-bg p-4 rounded-lg mb-8 shadow-xl text-white">
+            <img src="./images/header.png" alt="Header" class="mx-auto mb-4" style="max-width: 100%; height: auto;">
+            <div class="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center">
+                <h1 class="text-3xl font-bold tracking-tight mb-2 sm:mb-0">Yu-Gi-Oh! Tracker</h1>
+                <nav class="space-x-4">
+                    <a href="index.html" class="hover:text-gray-200 transition duration-150 font-medium">Inicio</a>
+                    <a href="packs.html" class="hover:text-gray-200 transition duration-150 font-medium">Packs</a>
+                    <a href="marketplace.html" class="hover:text-gray-200 transition duration-150 font-medium">Marketplace</a>
+                    <a href="admin.html" class="hover:text-gray-200 transition duration-150 font-medium">Admin</a>
+                    <a href="juegos.html" class="hover:text-gray-200 transition duration-150 font-medium">Juegos</a>
+                </nav>
+            </div>
+            <div class="max-w-6xl mx-auto text-center mt-2 space-y-1">
+                <span class="text-xs text-gray-200 block">Usuario Conectado: <strong id="logged-in-user-display" class="font-mono text-yellow-300">Ninguno</strong></span>
+            </div>
+        </header>
+
+        <main class="max-w-6xl mx-auto space-y-12">
+            <section id="packs" class="card p-6 rounded-xl text-white">
+                <h2 class="text-3xl font-extrabold mb-6 text-blue-400 border-b border-blue-400/50 pb-2">
+                    🎁 Packs de Cartas
+                </h2>
+                
+                <div class="mb-6">
+                    <p class="text-lg text-gray-300">Estás comprando como: <strong id="pack-buyer-display" class="text-yellow-300">...</strong></p>
+                    <p id="purchase-feedback" class="text-yellow-300 text-sm mt-2 h-5 feedback-message opacity-0"></p>
+                </div>
+
+                <div id="packs-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-4">
+                    <div class="pack-card bg-gray-700 p-4 rounded-lg border-2 border-gray-600 hover:border-purple-500 transition duration-300 flex flex-col items-center text-center">
+                        <img src="images/1.png" alt="Poder del Mago" class="pack-image mb-4">
+                        <h3 class="text-xl font-bold mb-2 text-purple-300">Poder del Mago</h3>
+                        <p class="text-3xl font-extrabold text-yellow-400 mb-3">250 DP</p>
+                        <ul class="text-sm space-y-1 text-gray-400 flex-grow mb-4">
+                            <li>Contiene 3 Cartas.</li>
+                            <li>Soporte para Decks de Hechiceros y Rituales.</li>
+                            <li>Ideal para Yugi y Pegasus.</li>
+                        </ul>
+                        <button id="buy-pack-1" data-cost="250" data-name="Poder del Mago" class="mt-auto w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 disabled:opacity-50">
+                            Comprar (250 DP)
+                        </button>
+                    </div>
+                    
+                    <div class="pack-card bg-gray-700 p-4 rounded-lg border-2 border-gray-600 hover:border-blue-500 transition duration-300 flex flex-col items-center text-center">
+                        <img src="images/2.png" alt="Furia del Dragón" class="pack-image mb-4">
+                        <h3 class="text-xl font-bold mb-2 text-blue-300">Furia del Dragón</h3>
+                        <p class="text-3xl font-extrabold text-yellow-400 mb-3">250 DP</p>
+                        <ul class="text-sm space-y-1 text-gray-400 flex-grow mb-4">
+                            <li>Contiene 3 Cartas.</li>
+                            <li>Soporte para Decks de Dragones y Guerreros.</li>
+                            <li>Ideal para Kaiba y Joey.</li>
+                        </ul>
+                        <button id="buy-pack-2" data-cost="250" data-name="Furia del Dragón" class="mt-auto w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 disabled:opacity-50">
+                            Comprar (250 DP)
+                        </button>
+                    </div>
+
+                    <div class="pack-card bg-gray-700 p-4 rounded-lg border-2 border-gray-600 hover:border-yellow-500 transition duration-300 flex flex-col items-center text-center">
+                        <img src="images/3.png" alt="Arsenal del Duelista" class="pack-image mb-4">
+                        <h3 class="text-xl font-bold mb-2 text-yellow-300">Arsenal del Duelista</h3>
+                        <p class="text-3xl font-extrabold text-yellow-400 mb-3">500 DP</p>
+                        <ul class="text-sm space-y-1 text-gray-400 flex-grow mb-4">
+                            <li>Contiene 3 Cartas.</li>
+                            <li>Cartas "Staple" genéricas de Magia/Trampa.</li>
+                            <li>Garantiza 1 Súper Rara.</li>
+                        </ul>
+                        <button id="buy-pack-3" data-cost="500" data-name="Arsenal del Duelista" class="mt-auto w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 disabled:opacity-50">
+                            Comprar (500 DP)
+                        </button>
+                    </div>
+
+                    <div class="pack-card bg-gray-700 p-4 rounded-lg border-2 border-gray-600 hover:border-amber-300 transition duration-300 flex flex-col items-center text-center">
+                        <img src="images/4.png" alt="Tesoro del Faraón" class="pack-image mb-4">
+                        <h3 class="text-xl font-bold mb-2 text-amber-300">Tesoro del Faraón</h3>
+                        <p class="text-3xl font-extrabold text-yellow-400 mb-3">800 DP</p>
+                        <ul class="text-sm space-y-1 text-gray-400 flex-grow mb-4">
+                            <li>Contiene 3 Cartas.</li>
+                            <li>Alto riesgo, alta recompensa.</li>
+                            <li>Posibilidad de Staples de poder (SR) o cartas "Exodia".</li>
+                        </ul>
+                        <button id="buy-pack-4" data-cost="800" data-name="Tesoro del Faraón" class="mt-auto w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 disabled:opacity-50">
+                            Comprar (800 DP)
+                        </button>
+                    </div>
+
+                    <div class="pack-card bg-gray-700 p-4 rounded-lg border-2 border-gray-600 hover:border-cyan-300 transition duration-300 flex flex-col items-center text-center">
+                        <img src="images/5.png" alt="Legado del Ojo Azul" class="pack-image mb-4">
+                        <h3 class="text-xl font-bold mb-2 text-cyan-300">Legado del Ojo Azul</h3>
+                        <p class="text-3xl font-extrabold text-yellow-400 mb-3">1500 DP</p>
+                        <ul class="text-sm space-y-1 text-gray-400 flex-grow mb-4">
+                            <li>Contiene 5 Cartas.</li>
+                            <li>Cartas de poder enfocadas en Dragones y Máquinas.</li>
+                            <li>Garantiza 2 Súper Raras.</li>
+                        </ul>
+                        <button id="buy-pack-5" data-cost="1500" data-name="Legado del Ojo Azul" class="mt-auto w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 disabled:opacity-50">
+                            Comprar (1500 DP)
+                        </button>
+                    </div>
+
+                    <div class="pack-card bg-gray-700 p-4 rounded-lg border-2 border-gray-600 hover:border-red-500 transition duration-300 flex flex-col items-center text-center">
+                        <img src="images/6.png" alt="El Cofre Prohibido" class="pack-image mb-4">
+                        <h3 class="text-xl font-bold mb-2 text-red-300">El Cofre Prohibido</h3>
+                        <p class="text-3xl font-extrabold text-yellow-400 mb-3">2500 DP</p>
+                        <ul class="text-sm space-y-1 text-gray-400 flex-grow mb-4">
+                            <li>Contiene 10 Cartas.</li>
+                            <li>Solo contiene cartas Raras, Súper Raras y Ultra Raras.</li>
+                            <li>Garantiza 1 Ultra Rara.</li>
+                        </ul>
+                        <button id="buy-pack-6" data-cost="2500" data-name="El Cofre Prohibido" class="mt-auto w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 disabled:opacity-50">
+                            Comprar (2500 DP)
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Constructor de Deck -->
+            <section id="deck-builder" class="card p-6 rounded-xl text-white">
+                <h2 class="text-3xl font-extrabold mb-6 text-indigo-400 border-b border-indigo-400/50 pb-2">
+                    🧩 Constructor de Deck
+                </h2>
+                <p class="text-gray-300 mb-4">Tus cartas adquiridas aparecerán como mini tarjetas estilo Yu-Gi-Oh!.</p>
+                <p id="deck-builder-feedback" class="text-center text-yellow-300 text-sm h-5 feedback-message opacity-0"></p>
+                <div id="deck-builder-grid" class="deck-grid min-h-[160px]"></div>
+            </section>
+        </main>
+
+        <footer class="mt-12 text-center text-gray-400 text-sm">
+            <p>© 2025 YGO Realms</p>
+            <p>Hecho para el seguimiento de tu duelo.</p>
+        </footer>
+    </div>
+    
+    <div id="pack-opening-modal" class="modal-overlay hidden opacity-0 visibility-hidden">
+        <div class="modal-content">
+            <h3 class="text-2xl font-bold mb-4 text-center text-yellow-300">¡Pack Adquirido!</h3>
+            <p class="text-center text-gray-400 text-sm mb-4">¡Estas son las cartas que obtuviste! (Nombres en Inglés para YGOPro):</p>
+            
+            <ul id="pack-card-list" class="space-y-2 bg-gray-900 p-4 rounded-lg border border-gray-600 mb-6 min-h-[150px]">
+                </ul>
+            
+            <button id="modal-close-pack-button" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                Aceptar
+            </button>
+        </div>
+    </div>
+
+    <script type="module" src="./main.js"></script>
+    <script type="module">
+        import { isLoggedIn, initializeAuth, updateUserDisplay, onSessionChange } from './auth.js';
+        import { initLiveEventsTicker } from './updates.js';
+        
+        // --- ¡AQUÍ ESTÁ LA CORRECCIÓN! ---
+        // Importamos las funciones específicas que esta página necesita desde main.js
+        import { initStore, updatePackButtonsUI, initDeckBuilder } from './main.js';
+        
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                await initializeAuth();
+                
+                if (!isLoggedIn()) {
+                    window.location.href = 'login.html';
+                } else {
+                    // 1. Actualizar la información del usuario en la página
+                    updateUserDisplay();
+                    
+                    // 2. Inicializar funcionalidades específicas de packs
+                    initStore();
+                    updatePackButtonsUI();
+                    initDeckBuilder();
+                    
+                    // 3. Suscribirse a cambios de sesión para actualizar UI
+                    onSessionChange(() => {
+                        updateUserDisplay();
+                        updatePackButtonsUI();
+                        initDeckBuilder();
+                    });
+
+                    // 4. Inicializar la barra de eventos en vivo
+                    initLiveEventsTicker();
+                }
+            } catch (error) {
+                console.error("Error al inicializar la página de packs:", error);
+                // Opcional: mostrar un error al usuario si la inicialización falla
+            }
+        });
+    </script>
+</body>
+</html>
