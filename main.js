@@ -21,7 +21,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js";
 
 // Importar el gestor de sesión global para comprobar inicio de sesión
-import { sessionManager, getCurrentUser, isLoggedIn } from './auth.js';
+import { sessionManager, getCurrentUser, isLoggedIn, STARTER_DECKS } from './auth.js';
 
 // --- FUNCIONALIDAD DE SECCIONES DESPLEGABLES ---
 document.addEventListener('DOMContentLoaded', function() {
@@ -95,9 +95,15 @@ let dbPlayersRef;
 let dbHistoryRef; 
 let dbMarketplaceRef; // NUEVO: Para el Marketplace
 let dbCardbaseRef; // NUEVO: Para la base de cartas
+let dbMessagesRef; // NUEVO: Mensajería del marketplace
 let localPlayersCache = new Map();
 let localMarketplaceCache = new Map(); // NUEVO: Cache para listados
-let loggedInPlayerId = sessionManager.getCurrentUser()?.name;
+ let localMessagesCache = new Map(); // NUEVO: Cache de mensajes por id
+ let marketplaceMessagingInitDone = false; // Evitar múltiples listeners de UI de mensajería
+ let loggedInPlayerId = sessionManager.getCurrentUser()?.id;
+let messagesListenerInitDone = false; // Evitar múltiples listeners
+const GLOBAL_GROUP_ID = 'group:global';
+const GLOBAL_GROUP_NAME = 'YGO REALMS';
 
 const TOTAL_GAMES = 3; // Reducido de 6 a 3
 const DAILY_PLAY_LIMIT = 3;
@@ -133,6 +139,19 @@ const marketSellButton = document.getElementById('market-sell-button');
 const marketSellFeedback = document.getElementById('market-sell-feedback');
 const marketListingsBody = document.getElementById('market-listings-body');
 const marketBuyFeedback = document.getElementById('market-buy-feedback');
+// DOM del Modal de Contacto y Panel de Mensajes (solo marketplace.html)
+let contactModal = null;
+let contactTextarea = null;
+let contactSendButton = null;
+let contactCancelButton = null;
+let messagesPanel = null;
+let conversationsList = null;
+let chatThread = null;
+let chatInput = null;
+let chatSendButton = null;
+let stickerBar = null;
+let currentContactListing = null;
+let currentChatRecipient = GLOBAL_GROUP_ID; // por defecto, chat grupal
 // DOM del Constructor de Deck (solo existe en packs.html)
 const deckBuilderGrid = document.getElementById('deck-builder-grid');
 const deckBuilderFeedback = document.getElementById('deck-builder-feedback');
@@ -150,11 +169,13 @@ export async function initializeAppWithAuth() {
             dbHistoryRef = collection(db, `${basePath}/history`);
             dbMarketplaceRef = collection(db, `${basePath}/marketplace`); // NUEVO
             dbCardbaseRef = collection(db, `${basePath}/cardbase`); // NUEVO: Para la base de cartas
+            dbMessagesRef = collection(db, `${basePath}/messages`); // NUEVO: Colección de mensajes
 
             await seedInitialData();
             initPlayersListener();
             initHistoryListener();
             initMarketplaceListener(); // NUEVO
+            initMessagesListener(); // NUEVO: Listener de mensajes
             
             if (dbLoadingFeedback) {
                 dbLoadingFeedback.textContent = "¡Conexión exitosa!";
@@ -166,6 +187,7 @@ export async function initializeAppWithAuth() {
             initGames();
             initAdmin();
             initMarketplace(); // NUEVO
+            initMarketplaceMessaging(); // NUEVO: UI y eventos de mensajería
 
         } else {
             try {
@@ -226,9 +248,9 @@ async function checkAndResetGamePlays(player) {
     if (needsUpdate) {
         console.log(`Reseteando juegos para ${player.name}`);
         try {
-            await updateDoc(doc(dbPlayersRef, player.name), { game_plays: plays });
+            await updateDoc(doc(dbPlayersRef, player.id), { game_plays: plays });
             player.game_plays = plays;
-            localPlayersCache.set(player.name, player);
+            localPlayersCache.set(player.id, player);
         } catch (error) {
             console.error("Error al resetear juegos:", error);
         }
@@ -242,13 +264,13 @@ function initPlayersListener() {
         const playerPromises = [];
         snapshot.forEach((doc) => {
             const playerData = doc.data();
-            playerData.name = doc.id; // Usando el ID del documento como nombre
+            playerData.id = doc.id; // Usar el ID del documento como identificador estable
             playerPromises.push(checkAndResetGamePlays(playerData));
         });
         
         const updatedPlayers = await Promise.all(playerPromises);
         localPlayersCache.clear();
-        updatedPlayers.forEach(player => localPlayersCache.set(player.name, player));
+        updatedPlayers.forEach(player => localPlayersCache.set(player.id, player));
         
         const players = Array.from(localPlayersCache.values());
         
@@ -311,12 +333,25 @@ function initHistoryListener() {
         historyEvents.sort((a, b) => b.timestamp - a.timestamp);
         historyList.innerHTML = '';
 
-        if (historyEvents.length === 0) {
-            historyList.innerHTML = `<li class="bg-gray-700 p-3 rounded-lg text-center text-gray-400">No hay eventos en la historia.</li>`;
+        // Filtrar eventos que involucren jugadores en modo fantasma
+        const ghostNames = new Set(Array.from(localPlayersCache.values()).filter(p => p.ghost).map(p => p.name));
+        const filteredEvents = ghostNames.size > 0
+            ? historyEvents.filter(event => {
+                const t = event && event.text;
+                if (typeof t !== 'string') return true;
+                for (const name of ghostNames) {
+                    if (t.includes(name)) return false;
+                }
+                return true;
+            })
+            : historyEvents;
+
+        if (filteredEvents.length === 0) {
+            historyList.innerHTML = `<li class="bg-gray-700 p-3 rounded-lg text-center text-gray-400">No hay eventos visibles.</li>`;
             return;
         }
 
-        historyEvents.forEach(event => {
+        filteredEvents.forEach(event => {
             const li = document.createElement('li');
             const eventClasses = getHistoryEntryClass(event.type);
             const date = new Date(event.timestamp).toLocaleString('es-ES', { timeStyle: 'short', dateStyle: 'short' });
@@ -339,11 +374,12 @@ function updateDPTable(players) {
     if (!dpTableBody) return; // Guarda: elemento puede no existir en todas las páginas
     
     dpTableBody.innerHTML = '';
-    if (players.length === 0) {
+    const visiblePlayers = players.filter(p => !p.ghost);
+    if (visiblePlayers.length === 0) {
         dpTableBody.innerHTML = `<tr><td colspan="2" class="px-4 py-4 text-center text-gray-400">Cargando puntos DP...</td></tr>`;
         return;
     }
-    players.forEach(player => {
+    visiblePlayers.forEach(player => {
         const row = document.createElement('tr');
         row.className = "hover:bg-gray-700 transition duration-150";
         row.innerHTML = `
@@ -358,11 +394,12 @@ function updateRankingTable(players) {
     if (!rankingTableBody) return; // Guarda: elemento puede no existir en todas las páginas
     
     rankingTableBody.innerHTML = '';
-    if (players.length === 0) {
+    const visiblePlayers = players.filter(p => !p.ghost);
+    if (visiblePlayers.length === 0) {
         rankingTableBody.innerHTML = `<tr><td colspan="3" class="px-4 py-4 text-center text-gray-400">Cargando ranking...</td></tr>`;
         return;
     }
-    players.forEach((player, index) => {
+    visiblePlayers.forEach((player, index) => {
         const rankRow = document.createElement('tr');
         rankRow.className = "hover:bg-gray-700 transition duration-150";
         rankRow.innerHTML = `
@@ -382,6 +419,7 @@ function updateAdminDropdowns(players) {
     const adminPlayerSelectLoser = document.getElementById('admin-player-select-loser');
     const adminCardInventorySelect = document.getElementById('admin-card-inventory-select');
     const adminDpPlayerSelect = document.getElementById('admin-dp-player-select');
+    const adminStarterPlayerSelect = document.getElementById('admin-starter-player-select');
 
     // Guarda: elementos pueden no existir en todas las páginas
     if (!adminPlayerSelect || !adminPlayerSelectLoser || !adminCardInventorySelect || !adminDpPlayerSelect) return;
@@ -390,6 +428,12 @@ function updateAdminDropdowns(players) {
     adminPlayerSelectLoser.innerHTML = '';
     adminCardInventorySelect.innerHTML = '';
     adminDpPlayerSelect.innerHTML = '';
+    if (adminGhostPlayerSelect) {
+        adminGhostPlayerSelect.innerHTML = '';
+    }
+    if (adminStarterPlayerSelect) {
+        adminStarterPlayerSelect.innerHTML = '';
+    }
 
     if (effectivePlayers.length === 0) {
         [adminPlayerSelect, adminPlayerSelectLoser, adminCardInventorySelect, adminDpPlayerSelect].forEach(sel => {
@@ -401,27 +445,39 @@ function updateAdminDropdowns(players) {
     effectivePlayers.forEach(player => {
         // Para selects de duelo (mostrar nombre + DP)
         const duelOption = document.createElement('option');
-        duelOption.value = player.name; // Usamos el ID del documento (nombre)
+        duelOption.value = player.id; // Usar id estable como value
         duelOption.textContent = `${player.name} (${player.dp} DP)`;
 
         // Para inventario (solo nombre)
         const inventoryOption = document.createElement('option');
-        inventoryOption.value = player.name;
+        inventoryOption.value = player.id;
         inventoryOption.textContent = player.name;
 
         // Para modificar DP (mostrar nombre + DP)
         const dpOption = document.createElement('option');
-        dpOption.value = player.name;
+        dpOption.value = player.id;
         dpOption.textContent = `${player.name} (${player.dp} DP)`;
 
         adminPlayerSelect.appendChild(duelOption.cloneNode(true));
         adminPlayerSelectLoser.appendChild(duelOption.cloneNode(true));
         adminCardInventorySelect.appendChild(inventoryOption.cloneNode(true));
         adminDpPlayerSelect.appendChild(dpOption.cloneNode(true));
+        if (adminGhostPlayerSelect) {
+            const ghostOption = document.createElement('option');
+            ghostOption.value = player.id;
+            ghostOption.textContent = player.name;
+            adminGhostPlayerSelect.appendChild(ghostOption);
+        }
+        if (adminStarterPlayerSelect) {
+            const starterOption = document.createElement('option');
+            starterOption.value = player.id;
+            starterOption.textContent = player.name;
+            adminStarterPlayerSelect.appendChild(starterOption);
+        }
     });
 
     // Selecciones por defecto basadas en el usuario logueado si existe
-    const defaultSelection = loggedInPlayerId || effectivePlayers[0].name;
+    const defaultSelection = loggedInPlayerId || effectivePlayers[0].id;
     [adminPlayerSelect, adminPlayerSelectLoser, adminDpPlayerSelect].forEach(sel => {
         if (sel.querySelector(`option[value="${defaultSelection}"]`)) sel.value = defaultSelection;
     });
@@ -431,6 +487,17 @@ function updateAdminDropdowns(players) {
     }
     // Actualizar la vista de inventario
     updateCardInventoryView(adminCardInventorySelect.value);
+
+    // Sincronizar selección y toggle del modo fantasma
+    if (adminGhostPlayerSelect) {
+        if (adminGhostPlayerSelect.querySelector(`option[value="${defaultSelection}"]`)) {
+            adminGhostPlayerSelect.value = defaultSelection;
+        }
+        const selectedPlayer = localPlayersCache.get(adminGhostPlayerSelect.value);
+        if (adminGhostToggle) {
+            adminGhostToggle.checked = !!(selectedPlayer && selectedPlayer.ghost);
+        }
+    }
 }
 
 
@@ -439,7 +506,7 @@ function updateGameButtonsUI() {
     const currentUser = getCurrentUser();
     if (!currentUser) return;
     
-    const player = localPlayersCache.get(currentUser.name);
+    const player = localPlayersCache.get(currentUser.id);
     if (!player) return;
 
     const plays = player.game_plays || getInitialGamePlays();
@@ -472,7 +539,7 @@ function updatePackButtonsUI() {
     const currentUser = getCurrentUser();
     if (!currentUser) return;
     
-    const player = localPlayersCache.get(currentUser.name);
+    const player = localPlayersCache.get(currentUser.id);
     if (!player) return;
 
     packButtons.forEach(button => {
@@ -521,7 +588,7 @@ function getGamePlays(gameId) {
     }
     
     const currentUser = getCurrentUser();
-    const player = localPlayersCache.get(currentUser.name);
+    const player = localPlayersCache.get(currentUser.id);
     if (!player) return { canPlay: false, reason: 'Jugador no encontrado.' }; // Guardia de seguridad
     
     const data = (player.game_plays && player.game_plays[gameId]) ? 
@@ -543,7 +610,7 @@ async function recordGamePlay(gameId, currentData, dpChange, historyText, histor
     }
     
     const currentUser = getCurrentUser();
-    const player = localPlayersCache.get(currentUser.name);
+    const player = localPlayersCache.get(currentUser.id);
     const now = Date.now();
 
     const newCount = currentData.count + 1;
@@ -554,7 +621,7 @@ async function recordGamePlay(gameId, currentData, dpChange, historyText, histor
     
     const newDp = player.dp + dpChange;
 
-    const playerRef = doc(dbPlayersRef, currentUser.name);
+    const playerRef = doc(dbPlayersRef, currentUser.id);
     const historyDocRef = doc(collection(db, dbHistoryRef.path));
     
     const historyEntry = {
@@ -754,8 +821,8 @@ async function updatePlayerInventory(player, packCost, pulledCards, packName) {
     pulledCards.forEach(card => {
         newCollection[card] = (newCollection[card] || 0) + 1;
     });
-
-    const playerRef = doc(dbPlayersRef, player.name); // Usando player.name como ID del documento
+    
+    const playerRef = doc(dbPlayersRef, player.id);
     const historyDocRef = doc(collection(db, dbHistoryRef.path));
     
     const historyEntry = {
@@ -1298,6 +1365,14 @@ async function playGame3(choice) {
 // Constante para la contraseña de administrador
 const ADMIN_PASSWORD = 'as17sa71';
 
+// URLs públicas de los decks iniciales
+const STARTER_DECK_URLS = {
+    Yugi: 'https://ygoprodeck.com/deck/starter-deck-yugi-253578',
+    Kaiba: 'https://ygoprodeck.com/deck/starter-deck-kaiba-193017',
+    Joey: 'https://ygoprodeck.com/deck/joey-starter-deck-309942',
+    Pegasus: 'https://ygoprodeck.com/deck/pegasus-starter-deck-309943'
+};
+
 // --- DOM DEL ADMIN ---
 const adminLockScreen = document.getElementById('admin-lock-screen');
 const adminPasswordInput = document.getElementById('admin-password');
@@ -1319,10 +1394,20 @@ const adminResetWeekButton = document.getElementById('admin-reset-week-button');
 
 const adminCardInventorySelect = document.getElementById('admin-card-inventory-select');
 const adminCardInventoryList = document.getElementById('admin-card-inventory-list');
+// NUEVO: Implantar Deck Inicial
+const adminStarterPlayerSelect = document.getElementById('admin-starter-player-select');
+const adminStarterDeckSelect = document.getElementById('admin-starter-deck-select');
+const adminStarterImplantButton = document.getElementById('admin-starter-implant-button');
+const adminStarterFeedback = document.getElementById('admin-starter-feedback');
 // NUEVOS BOTONES DE RESET
 const adminFactoryResetButton = document.getElementById('admin-factory-reset-button');
 const adminResetFeedback = document.getElementById('admin-reset-feedback');
 let factoryResetTimer = null;
+// --- DOM Modo Fantasma ---
+const adminGhostPlayerSelect = document.getElementById('admin-ghost-player-select');
+const adminGhostToggle = document.getElementById('admin-ghost-toggle');
+const adminGhostSaveButton = document.getElementById('admin-ghost-save-button');
+const adminGhostFeedback = document.getElementById('admin-ghost-feedback');
 
 
 // --- FUNCIÓN DE INICIALIZACIÓN ---
@@ -1356,6 +1441,31 @@ function initAdmin() {
 
     // NUEVO: Listener para el botón de reseteo
     adminFactoryResetButton.addEventListener('click', handleFactoryResetClick);
+
+    // NUEVO: Implantar Deck Inicial
+    if (adminStarterImplantButton) {
+        adminStarterImplantButton.addEventListener('click', implantStarterDeckToPlayer);
+    }
+
+    // Listeners modo fantasma
+    if (adminGhostPlayerSelect && adminGhostToggle) {
+        adminGhostPlayerSelect.addEventListener('change', () => {
+            const playerId = adminGhostPlayerSelect.value;
+            const player = localPlayersCache.get(playerId);
+            adminGhostToggle.checked = !!(player && player.ghost);
+        });
+    }
+    if (adminGhostSaveButton) {
+        adminGhostSaveButton.addEventListener('click', async () => {
+            const playerId = adminGhostPlayerSelect ? adminGhostPlayerSelect.value : null;
+            if (!playerId) {
+                showFeedback(adminGhostFeedback, 'Selecciona un jugador para actualizar su modo fantasma.', true);
+                return;
+            }
+            const isGhost = adminGhostToggle ? adminGhostToggle.checked : false;
+            await updatePlayerGhostMode(playerId, isGhost);
+        });
+    }
 }
 
 // Función para manejar la modificación de DP
@@ -1460,6 +1570,89 @@ async function updatePlayerDP(playerId, newDP) {
     } catch (error) {
         console.error("Error al actualizar DP:", error);
         showFeedback(adminFeedback, "Error al guardar los cambios en la base de datos.", true);
+    }
+}
+
+// NUEVO: Implantar cartas de un deck inicial a un jugador
+async function implantStarterDeckToPlayer() {
+    try {
+        if (!adminStarterPlayerSelect || !adminStarterDeckSelect) return;
+
+        const playerId = adminStarterPlayerSelect.value;
+        const deck = adminStarterDeckSelect.value;
+
+        if (!playerId) {
+            showFeedback(adminStarterFeedback, 'Selecciona un jugador.', true);
+            return;
+        }
+        if (!STARTER_DECKS[deck]) {
+            showFeedback(adminStarterFeedback, 'Selecciona un deck válido.', true);
+            return;
+        }
+
+        const player = localPlayersCache.get(playerId) || Array.from(localPlayersCache.values()).find(p => p.id === playerId);
+        if (!player) {
+            showFeedback(adminStarterFeedback, 'Jugador no encontrado en caché.', true);
+            return;
+        }
+
+        const newCollection = { ...(player.card_collection || {}) };
+        const cardsToAdd = Object.values(STARTER_DECKS[deck]).flat();
+        let addedCount = 0;
+        for (const card of cardsToAdd) {
+            newCollection[card] = (newCollection[card] || 0) + 1;
+            addedCount++;
+        }
+
+        const playerRef = doc(dbPlayersRef, playerId);
+        const batch = writeBatch(db);
+        batch.update(playerRef, {
+            card_collection: newCollection,
+            deck: deck,
+            deck_url: STARTER_DECK_URLS[deck],
+            starter_assigned: true
+        });
+        batch.set(doc(collection(db, dbHistoryRef.path)), {
+            text: `Admin implantó deck "${deck}" a ${player.name} (+${addedCount} cartas).`,
+            timestamp: Date.now(),
+            type: 'admin'
+        });
+
+        await batch.commit();
+        showFeedback(adminStarterFeedback, `Deck ${deck} implantado a ${player.name} (+${addedCount}).`, false);
+
+        // Refrescar vista de inventario si corresponde
+        if (adminCardInventorySelect && adminCardInventorySelect.value === playerId) {
+            updateCardInventoryView(playerId);
+        }
+
+    } catch (error) {
+        console.error('Error al implantar deck:', error);
+        showFeedback(adminStarterFeedback, 'Error al implantar deck.', true);
+    }
+}
+
+// Actualizar el modo fantasma del jugador en Firebase
+async function updatePlayerGhostMode(playerId, isGhost) {
+    try {
+        const playerRef = doc(dbPlayersRef, playerId);
+        await updateDoc(playerRef, { ghost: !!isGhost });
+        showFeedback(adminGhostFeedback, `Modo fantasma ${isGhost ? 'activado' : 'desactivado'} para el jugador.`, false);
+        // Actualizar caché local inmediato
+        const player = localPlayersCache.get(playerId);
+        if (player) {
+            player.ghost = !!isGhost;
+        }
+        // Refrescar UI dependiente
+        const players = Array.from(localPlayersCache.values());
+        const sortedByDp = [...players].sort((a, b) => b.dp - a.dp);
+        const sortedByWins = [...players].sort((a, b) => (b.wins_semanales || 0) - (a.wins_semanales || 0));
+        updateDPTable(sortedByDp);
+        updateRankingTable(sortedByWins);
+        updateAdminDropdowns(players);
+    } catch (error) {
+        console.error('Error al actualizar modo fantasma:', error);
+        showFeedback(adminGhostFeedback, 'Error al guardar el modo fantasma.', true);
     }
 }
 
@@ -1578,6 +1771,18 @@ async function addNewPlayer() {
         card_collection: {},
         game_plays: getInitialGamePlays()
     };
+
+    // Si el deck elegido es uno de los iniciales, asignar cartas automáticamente
+    if (['Yugi', 'Kaiba', 'Joey', 'Pegasus'].includes(newDeck)) {
+        const cardsToAdd = Object.values(STARTER_DECKS[newDeck]).flat();
+        const initialCollection = {};
+        for (const card of cardsToAdd) {
+            initialCollection[card] = (initialCollection[card] || 0) + 1;
+        }
+        newPlayerData.card_collection = initialCollection;
+        newPlayerData.starter_assigned = true;
+        newPlayerData.deck_url = STARTER_DECK_URLS[newDeck];
+    }
 
     try {
         await setDoc(doc(dbPlayersRef, newName), newPlayerData);
@@ -1753,7 +1958,7 @@ async function executeFactoryReset() {
 // --- FUNCIÓN DE INICIALIZACIÓN ---
 function initMarketplace() {
     marketSellButton.addEventListener('click', listCardForSale);
-    marketListingsBody.addEventListener('click', handleBuyCardClick);
+    marketListingsBody.addEventListener('click', handleMarketplaceClick);
 }
 
 // --- LISTENER DEL MARKETPLACE ---
@@ -1785,27 +1990,53 @@ function updateMarketplaceListings() {
         tr.className = "hover:bg-gray-800 transition-colors";
         
         const currentUser = getCurrentUser(); // Importado de auth.js
-        const player = currentUser ? localPlayersCache.get(currentUser.name) : null;
-        const isOwner = player ? listing.sellerId === player.id : false;
+        const player = currentUser ? localPlayersCache.get(currentUser.id) : null;
+        const isOwner = player ? (listing.sellerId === player.id || listing.sellerId === player.name) : false;
         const canAfford = player ? player.dp >= listing.price : false;
-        const buyButtonDisabled = isOwner || !canAfford;
+
+        const actionsHtml = isOwner
+            ? `
+                <button 
+                    class="withdraw-button" 
+                    data-listing-id="${listing.id}"
+                >Retirar</button>
+              `
+            : `
+                <div class="flex gap-2 items-center">
+                    <button 
+                        class="buy-button" 
+                        data-listing-id="${listing.id}" 
+                        ${!canAfford ? 'disabled' : ''}
+                    >Comprar</button>
+                    <button 
+                        class="contact-button" 
+                        data-listing-id="${listing.id}"
+                    >Contactar</button>
+                </div>
+              `;
 
         tr.innerHTML = `
             <td class="px-3 py-3 card-name">${listing.cardName}</td>
             <td class="px-3 py-3 card-price">${listing.price} DP</td>
             <td class="px-3 py-3 text-gray-400">${listing.sellerName}</td>
-            <td class="px-3 py-3">
-                <button 
-                    class="buy-button" 
-                    data-listing-id="${listing.id}" 
-                    ${buyButtonDisabled ? 'disabled' : ''}
-                >
-                    ${isOwner ? 'Tuyo' : 'Comprar'}
-                </button>
-            </td>
+            <td class="px-3 py-3">${actionsHtml}</td>
         `;
         marketListingsBody.appendChild(tr);
     });
+}
+
+// Manejador unificado para acciones del marketplace
+async function handleMarketplaceClick(e) {
+    const target = e.target;
+    if (target.classList.contains('buy-button')) {
+        return handleBuyCardClick(e);
+    }
+    if (target.classList.contains('withdraw-button')) {
+        return handleWithdrawClick(e);
+    }
+    if (target.classList.contains('contact-button')) {
+        return handleContactClick(e);
+    }
 }
 
 function updateMarketplaceSellDropdown() {
@@ -1820,7 +2051,7 @@ function updateMarketplaceSellDropdown() {
         return;
     }
     
-    const player = localPlayersCache.get(currentUser.name);
+    const player = localPlayersCache.get(currentUser.id);
     if (!player || !player.card_collection || Object.keys(player.card_collection).length === 0) {
         marketSellCardSelect.innerHTML = `<option>No tienes cartas para vender</option>`;
         return;
@@ -1855,7 +2086,7 @@ async function listCardForSale() {
     const currentUser = getCurrentUser();
     const cardName = marketSellCardSelect.value;
     const price = parseInt(marketSellPriceInput.value);
-    const player = localPlayersCache.get(currentUser.name);
+    const player = localPlayersCache.get(currentUser.id);
 
     if (!player) {
         showFeedback(marketSellFeedback, "No se encontró al jugador.", true);
@@ -1878,7 +2109,7 @@ async function listCardForSale() {
         const newListing = {
             cardName: cardName,
             price: price,
-            sellerId: currentUser.name,
+            sellerId: currentUser.id,
             sellerName: player.name,
             timestamp: Date.now()
         };
@@ -1890,7 +2121,7 @@ async function listCardForSale() {
             delete newCollection[cardName]; // Limpiar si ya no tiene
         }
         
-        const playerRef = doc(dbPlayersRef, currentUser.name);
+        const playerRef = doc(dbPlayersRef, currentUser.id);
         const marketDocRef = doc(collection(db, dbMarketplaceRef.path));
         const historyDocRef = doc(collection(db, dbHistoryRef.path));
         
@@ -1937,13 +2168,17 @@ async function handleBuyCardClick(e) {
     }
     
     const currentUser = getCurrentUser();
-    const buyer = localPlayersCache.get(currentUser.name);
+    const buyer = localPlayersCache.get(currentUser.id);
     if (!buyer) {
         showFeedback(marketBuyFeedback, "Error al encontrar al comprador.", true);
         return;
     }
 
-    const seller = localPlayersCache.get(listing.sellerId);
+    let seller = localPlayersCache.get(listing.sellerId);
+    if (!seller) {
+        // Compatibilidad con listados antiguos donde sellerId era el nombre
+        seller = Array.from(localPlayersCache.values()).find(p => p.name === listing.sellerId) || null;
+    }
 
     if (!seller) {
         showFeedback(marketBuyFeedback, "Error al encontrar al vendedor. Cancelando.", true);
@@ -2013,6 +2248,371 @@ async function handleBuyCardClick(e) {
 }
 
 // --- [FIN] MÓDULO: marketplace.js ---
+
+// --- [INICIO] MÓDULO: marketplace messaging ---
+function initMarketplaceMessaging() {
+    if (marketplaceMessagingInitDone) return;
+    // Re-resolver referencias del DOM (el script se carga antes que el HTML completo)
+    contactModal = document.getElementById('contact-modal');
+    contactTextarea = document.getElementById('contact-textarea');
+    contactSendButton = document.getElementById('contact-send-button');
+    contactCancelButton = document.getElementById('contact-cancel-button');
+    messagesPanel = document.getElementById('market-messages-panel');
+    conversationsList = document.getElementById('market-conversations-list');
+    chatThread = document.getElementById('market-chat-thread');
+    chatInput = document.getElementById('chat-input');
+    chatSendButton = document.getElementById('chat-send-button');
+    stickerBar = document.getElementById('chat-sticker-bar');
+
+    if (!contactModal || !contactSendButton || !contactCancelButton) return;
+    contactSendButton.addEventListener('click', sendContactMessage);
+    contactCancelButton.addEventListener('click', closeContactModal);
+    if (messagesPanel) messagesPanel.classList.remove('hidden');
+    if (chatSendButton) chatSendButton.addEventListener('click', sendChatThreadMessage);
+    if (chatInput) {
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendChatThreadMessage();
+        });
+    }
+    if (stickerBar) {
+        stickerBar.addEventListener('click', (e) => {
+            const el = e.target.closest('.sticker-item');
+            if (!el) return;
+            const url = el.dataset.stickerUrl;
+            if (url) sendStickerMessage(url);
+        });
+    }
+    renderMessagesPanel();
+    marketplaceMessagingInitDone = true;
+}
+
+// Avatar por defecto según deck
+function getDefaultAvatarForDeck(deck) {
+    const d = (deck || '').toLowerCase();
+    if (/azul|blue|kaiba/.test(d)) return './perfiles/kaiba.png';
+    if (/roj|red|joey/.test(d)) return './perfiles/joey.png';
+    if (/toon|pegasus|pegaso|ojo/.test(d)) return './perfiles/pegasus.png';
+    return './perfiles/yugi.png';
+}
+
+function openContactModal(listing) {
+    currentContactListing = listing;
+    if (contactTextarea) contactTextarea.value = '';
+    if (contactModal) contactModal.classList.remove('hidden');
+}
+
+function closeContactModal() {
+    currentContactListing = null;
+    if (contactModal) contactModal.classList.add('hidden');
+}
+
+async function sendContactMessage() {
+    if (!currentContactListing) return;
+    const currentUser = getCurrentUser();
+    if (!currentUser) return;
+    const sender = localPlayersCache.get(currentUser.name);
+    if (!sender) return;
+    const text = (contactTextarea?.value || '').trim();
+    if (!text) return;
+
+    try {
+        const msg = {
+            fromId: sender.id,
+            fromName: sender.name,
+            toId: currentContactListing.sellerId,
+            toName: currentContactListing.sellerName,
+            targetType: 'private',
+            listingId: currentContactListing.id,
+            cardName: currentContactListing.cardName,
+            price: currentContactListing.price,
+            text,
+            timestamp: Date.now(),
+            isRead: false
+        };
+        await setDoc(doc(collection(db, dbMessagesRef.path)), msg);
+        closeContactModal();
+        // Seleccionar conversación del destinatario recién contactado
+        currentChatRecipient = currentContactListing.sellerId;
+        renderMessagesPanel();
+        // Feedback ligero reutilizando marketBuyFeedback
+        showFeedback(marketBuyFeedback, 'Mensaje enviado al vendedor.', false);
+    } catch (err) {
+        console.error('Error al enviar mensaje:', err);
+        showFeedback(marketBuyFeedback, 'Error al enviar el mensaje.', true);
+    }
+}
+
+async function sendChatThreadMessage() {
+    const currentUser = getCurrentUser();
+    if (!currentUser || !chatInput) return;
+    const sender = localPlayersCache.get(currentUser.name);
+    if (!sender) return;
+    const text = (chatInput.value || '').trim();
+    if (!text) return;
+    try {
+        let toId = currentChatRecipient || GLOBAL_GROUP_ID;
+        let toName = GLOBAL_GROUP_NAME;
+        let targetType = 'group';
+        if (toId !== GLOBAL_GROUP_ID) {
+            const other = getPlayerById(toId);
+            toName = other?.name || 'Jugador';
+            targetType = 'private';
+        }
+        const msg = {
+            fromId: sender.id,
+            fromName: sender.name,
+            toId,
+            toName,
+            targetType,
+            text,
+            timestamp: Date.now(),
+            isRead: false
+        };
+        await setDoc(doc(collection(db, dbMessagesRef.path)), msg);
+        chatInput.value = '';
+        renderMessagesPanel();
+    } catch (err) {
+        console.error('Error al enviar al chat:', err);
+        showFeedback(marketBuyFeedback, 'Error al enviar al chat.', true);
+    }
+}
+
+// Envío de sticker como mensaje
+async function sendStickerMessage(stickerUrl) {
+    const currentUser = getCurrentUser();
+    if (!currentUser || !stickerUrl) return;
+    const sender = localPlayersCache.get(currentUser.name);
+    if (!sender) return;
+    try {
+        let toId = currentChatRecipient || GLOBAL_GROUP_ID;
+        let toName = GLOBAL_GROUP_NAME;
+        let targetType = 'group';
+        if (toId !== GLOBAL_GROUP_ID) {
+            const other = getPlayerById(toId);
+            toName = other?.name || 'Jugador';
+            targetType = 'private';
+        }
+        const msg = {
+            fromId: sender.id,
+            fromName: sender.name,
+            toId,
+            toName,
+            targetType,
+            text: '',
+            stickerUrl,
+            timestamp: Date.now(),
+            isRead: false
+        };
+        await setDoc(doc(collection(db, dbMessagesRef.path)), msg);
+        renderMessagesPanel();
+    } catch (err) {
+        console.error('Error al enviar sticker al chat:', err);
+        showFeedback(marketBuyFeedback, 'Error al enviar el sticker.', true);
+    }
+}
+
+function initMessagesListener() {
+    const currentUser = getCurrentUser();
+    if (!currentUser || !dbMessagesRef) return;
+    if (messagesListenerInitDone) return;
+    // Recibidos (privados)
+    onSnapshot(query(dbMessagesRef, where('toId', '==', currentUser.id)), (snap) => {
+        snap.forEach(d => {
+            localMessagesCache.set(d.id, { id: d.id, ...d.data() });
+        });
+        renderMessagesPanel();
+        markReceivedAsRead(currentUser.id);
+    });
+    // Enviados
+    onSnapshot(query(dbMessagesRef, where('fromId', '==', currentUser.id)), (snap) => {
+        snap.forEach(d => {
+            localMessagesCache.set(d.id, { id: d.id, ...d.data() });
+        });
+        renderMessagesPanel();
+    });
+    // Chat grupal
+    onSnapshot(query(dbMessagesRef, where('toId', '==', GLOBAL_GROUP_ID)), (snap) => {
+        snap.forEach(d => {
+            localMessagesCache.set(d.id, { id: d.id, ...d.data() });
+        });
+        renderMessagesPanel();
+    });
+    messagesListenerInitDone = true;
+}
+
+async function markReceivedAsRead(myId) {
+    const msgs = Array.from(localMessagesCache.values()).filter(m => m.toId === myId && !m.isRead);
+    for (const m of msgs) {
+        try {
+            await updateDoc(doc(dbMessagesRef, m.id), { isRead: true });
+        } catch (e) {
+            console.warn('No se pudo marcar como leído:', m.id, e);
+        }
+    }
+}
+
+function getPlayerById(pid) {
+    for (const p of localPlayersCache.values()) {
+        if (p.id === pid) return p;
+    }
+    return null;
+}
+
+function renderMessagesPanel() {
+    if (!messagesPanel || !conversationsList || !chatThread) return;
+    const currentUser = getCurrentUser();
+    if (!currentUser) return;
+    const all = Array.from(localMessagesCache.values());
+
+    // Construir lista de conversaciones (privadas y grupal)
+    const conversations = new Map();
+    // Conversación grupal siempre presente
+    conversations.set(GLOBAL_GROUP_ID, { toId: GLOBAL_GROUP_ID, toName: GLOBAL_GROUP_NAME, lastTs: 0 });
+
+    for (const m of all) {
+        if (m.targetType === 'group' && m.toId === GLOBAL_GROUP_ID) {
+            const prev = conversations.get(GLOBAL_GROUP_ID);
+            const lastTs = Math.max(prev?.lastTs || 0, m.timestamp || 0);
+            conversations.set(GLOBAL_GROUP_ID, { toId: GLOBAL_GROUP_ID, toName: GLOBAL_GROUP_NAME, lastTs });
+            continue;
+        }
+        // Privados: agrupar por el otro participante
+        if (m.fromId === currentUser.id || m.toId === currentUser.id) {
+            const otherId = m.fromId === currentUser.id ? m.toId : m.fromId;
+            const otherName = m.fromId === currentUser.id ? m.toName : m.fromName;
+            const prev = conversations.get(otherId);
+            if (!prev || prev.lastTs < (m.timestamp || 0)) {
+                conversations.set(otherId, { toId: otherId, toName: otherName, lastTs: m.timestamp || 0 });
+            }
+        }
+    }
+
+    const convArr = Array.from(conversations.values()).sort((a,b) => b.lastTs - a.lastTs);
+    // Selección por defecto: grupal
+    if (!currentChatRecipient) currentChatRecipient = GLOBAL_GROUP_ID;
+
+    // Renderizar lista de conversaciones
+    conversationsList.innerHTML = '';
+    for (const c of convArr) {
+        const item = document.createElement('button');
+        item.type = 'button';
+        item.className = 'chat-item' + (c.toId === currentChatRecipient ? ' active' : '');
+        item.dataset.toId = c.toId;
+        // Avatar
+        let avatarHtml = '';
+        if (c.toId === GLOBAL_GROUP_ID) {
+            avatarHtml = `<div class="chat-item-avatar"><img src="./images/header.png" alt="grupo"/></div>`;
+        } else {
+            const p = getPlayerById(c.toId);
+            const src = p?.avatarData ? p.avatarData : getDefaultAvatarForDeck(p?.deck);
+            avatarHtml = `<div class="chat-item-avatar"><img src="${src}" alt="${c.toName}"/></div>`;
+        }
+        item.innerHTML = `
+            ${avatarHtml}
+            <div class="chat-item-body">
+                <div class="chat-item-name">${c.toName}</div>
+                <div class="chat-item-time">${c.lastTs ? new Date(c.lastTs).toLocaleString() : ''}</div>
+            </div>
+        `;
+        item.addEventListener('click', () => {
+            currentChatRecipient = c.toId;
+            renderMessagesPanel();
+        });
+        conversationsList.appendChild(item);
+    }
+
+    // Renderizar hilo del chat: ambos lados
+    chatThread.innerHTML = '';
+    let threadMsgs = [];
+    if (currentChatRecipient === GLOBAL_GROUP_ID) {
+        threadMsgs = all.filter(m => m.toId === GLOBAL_GROUP_ID).sort((a,b) => a.timestamp - b.timestamp);
+    } else {
+        threadMsgs = all.filter(m => (m.fromId === currentUser.id && m.toId === currentChatRecipient) || (m.fromId === currentChatRecipient && m.toId === currentUser.id)).sort((a,b) => a.timestamp - b.timestamp);
+    }
+
+    for (const m of threadMsgs) {
+        const isSent = m.fromId === currentUser.id;
+        const row = document.createElement('div');
+        row.className = 'chat-row ' + (isSent ? 'sent' : 'received');
+        const bubble = document.createElement('div');
+        bubble.className = 'chat-bubble ' + (isSent ? 'sent' : 'received');
+        const statusIcon = isSent ? (m.isRead ? '<span class="check-double read">✔✔</span>' : '<span class="check-double">✔✔</span>') : '';
+        const who = (!isSent && m.targetType === 'group') ? `<div class="bubble-who">${m.fromName}</div>` : '';
+        const hasSticker = !!m.stickerUrl;
+        const textHtml = m.text ? `<div class="bubble-text">${m.text}</div>` : '';
+        const stickerHtml = hasSticker ? `<img src="${m.stickerUrl}" alt="sticker" class="bubble-sticker"/>` : '';
+        bubble.innerHTML = `
+            ${who}
+            ${stickerHtml}
+            ${textHtml}
+            <div class="bubble-meta">${new Date(m.timestamp).toLocaleString()} ${statusIcon}</div>
+        `;
+        row.appendChild(bubble);
+        chatThread.appendChild(row);
+    }
+    messagesPanel.classList.remove('hidden');
+}
+
+async function handleWithdrawClick(e) {
+    const btn = e.target;
+    if (!btn.classList.contains('withdraw-button')) return;
+    const listingId = btn.dataset.listingId;
+    const listing = localMarketplaceCache.get(listingId);
+    const currentUser = getCurrentUser();
+    if (!listing || !currentUser) return;
+    const player = localPlayersCache.get(currentUser.id);
+    if (!player || !(listing.sellerId === player.id || listing.sellerId === player.name)) return;
+
+    showFeedback(marketBuyFeedback, 'Retirando tu oferta...', false, 0);
+    btn.disabled = true;
+    try {
+        const playerRef = doc(dbPlayersRef, player.id);
+        const listingRef = doc(dbMarketplaceRef, listingId);
+        const historyDocRef = doc(collection(db, dbHistoryRef.path));
+        const newCollection = { ...player.card_collection };
+        newCollection[listing.cardName] = (newCollection[listing.cardName] || 0) + 1;
+        const historyEntry = {
+            text: `${player.name} retiró "${listing.cardName}" del marketplace. Carta devuelta a su colección.`,
+            timestamp: Date.now(),
+            type: 'market'
+        };
+        const batch = writeBatch(db);
+        batch.update(playerRef, { card_collection: newCollection });
+        batch.delete(listingRef);
+        batch.set(historyDocRef, historyEntry);
+        await batch.commit();
+        showFeedback(marketBuyFeedback, 'Oferta retirada y carta devuelta.', false);
+    } catch (err) {
+        console.error('Error al retirar oferta:', err);
+        showFeedback(marketBuyFeedback, 'Error al retirar la oferta.', true);
+    }
+}
+
+function handleContactClick(e) {
+    const btn = e.target;
+    if (!btn.classList.contains('contact-button')) return;
+    const listingId = btn.dataset.listingId;
+    const listing = localMarketplaceCache.get(listingId);
+    if (!listing) return;
+    openContactModal(listing);
+}
+
+// --- [FIN] MÓDULO: marketplace messaging ---
+
+// Arrancar listeners de mensajes cuando se establezca la sesión
+sessionManager.onSessionChange(() => {
+    // Sincronizar el ID del jugador logueado desde la sesión
+    const cu = sessionManager.getCurrentUser();
+    loggedInPlayerId = cu?.id || null;
+
+    // Re-inicializar módulos dependientes y refrescar UI
+    initMarketplaceMessaging();
+    initMessagesListener();
+    updateGameButtonsUI();
+    updatePackButtonsUI();
+    updateMarketplaceSellDropdown();
+    updateMarketplaceListings();
+});
 
 
 // --- [INICIO] MÓDULO: deck-builder.js ---
@@ -2142,7 +2742,8 @@ export {
     updateRankingTable, 
     initHistoryListener,
     localPlayersCache,
-    initDeckBuilder
+    initDeckBuilder,
+    initMarketplaceMessaging
 };
 
 // --- [INICIO] MÓDULO: eventos.js ---
@@ -2156,6 +2757,61 @@ export function initEvents() {
         }
     }
 }
+
+// --- [AÑADIR ESTA NUEVA FUNCIÓN AL FINAL DE main.js] ---
+async function seedStarterDecks() {
+    if (!dbCardbaseRef) {
+        console.error("dbCardbaseRef no está definida.");
+        return;
+    }
+
+    try {
+        // 1. Cargar el nuevo archivo JSON
+        const response = await fetch('./starter_decks_seed.json');
+        if (!response.ok) {
+            throw new Error(`No se pudo cargar starter_decks_seed.json (Error ${response.status})`);
+        }
+        const cardsToSeed = await response.json();
+        
+        if (!Array.isArray(cardsToSeed) || cardsToSeed.length === 0) {
+            throw new Error("starter_decks_seed.json está vacío o no es un array.");
+        }
+
+        console.log(`Iniciando siembra de ${cardsToSeed.length} cartas de Decks Iniciales...`);
+        
+        // 2. Subir cartas a Firestore en un batch
+        let batch = writeBatch(db);
+        let count = 0;
+
+        for (const card of cardsToSeed) {
+            // Verificación simple para no duplicar (opcional pero recomendado)
+            const q = query(dbCardbaseRef, where("name", "==", card.name));
+            const existing = await getDocs(q);
+            if (!existing.empty) {
+                console.warn(`La carta "${card.name}" ya existe. Omitiendo.`);
+                continue;
+            }
+
+            const newCardRef = doc(collection(db, dbCardbaseRef.path));
+            batch.set(newCardRef, card);
+            count++;
+
+            if (count % 499 === 0) { // Límite de batch
+                await batch.commit();
+                batch = writeBatch(db);
+            }
+        }
+
+        await batch.commit();
+        console.log(`¡Siembra de Decks Iniciales completada! Se añadieron ${count} nuevas cartas.`);
+        
+    } catch (error) {
+        console.error("Error al sembrar los Decks Iniciales:", error);
+    }
+}
+// Exponer la nueva función a la consola
+window.seedStarterDecks = seedStarterDecks;
+// --- [FIN DE LA NUEVA FUNCIÓN] ---
 
 // --- INICIAR LA APLICACIÓN ---
 // Esperar a que el DOM esté completamente cargado para iniciar

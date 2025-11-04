@@ -18,6 +18,7 @@
                     <a href="index.html" class="hover:text-gray-200 transition duration-150 font-medium">Inicio</a>
                     <a href="packs.html" class="hover:text-gray-200 transition duration-150 font-medium">Packs</a>
                     <a href="marketplace.html" class="hover:text-gray-200 transition duration-150 font-medium">Marketplace</a>
+                    <a href="perfil.html" class="hover:text-gray-200 transition duration-150 font-medium">Perfil</a>
                     <a href="admin.html" class="hover:text-gray-200 transition duration-150 font-medium">Admin</a>
                     <a href="juegos.html" class="hover:text-gray-200 transition duration-150 font-medium">Juegos</a>
                 </nav>
@@ -152,6 +153,36 @@
                         <p id="admin-week-feedback" class="text-center text-yellow-300 text-sm mt-2 h-5 feedback-message opacity-0"></p>
                     </div>
 
+                    <!-- Modo Fantasma -->
+                    <hr class="border-gray-600 my-8">
+                    <div>
+                        <h3 class="text-xl font-bold mb-3 text-gray-100">Modo Fantasma</h3>
+                        <p class="text-sm text-gray-400 mb-4">
+                            Oculta a un jugador del Ranking Semanal, de la tabla de DP y de los eventos en vivo (no aparecerán sus movimientos).
+                        </p>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                            <div>
+                                <label for="admin-ghost-player-select" class="block text-sm font-medium text-gray-300 mb-2">Jugador:</label>
+                                <select id="admin-ghost-player-select" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                    <option>Cargando...</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="admin-ghost-toggle" class="block text-sm font-medium text-gray-300 mb-2">Estado:</label>
+                                <div class="flex items-center space-x-2">
+                                    <input id="admin-ghost-toggle" type="checkbox" class="h-4 w-4 bg-gray-700 border-gray-600 text-indigo-600 focus:ring-indigo-500 rounded">
+                                    <span class="text-sm text-gray-300">Activar modo fantasma</span>
+                                </div>
+                            </div>
+                            <div class="flex">
+                                <button id="admin-ghost-save-button" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                                    Guardar cambios
+                                </button>
+                            </div>
+                        </div>
+                        <p id="admin-ghost-feedback" class="text-center text-yellow-300 text-sm mt-2 h-5 feedback-message opacity-0"></p>
+                    </div>
+
                     <!-- Inventario de Cartas Adquiridas -->
                     <hr class="border-gray-600 my-8">
                     <div>
@@ -170,6 +201,38 @@
                         <ul id="admin-card-inventory-list" class="space-y-2 bg-gray-900 p-4 rounded-lg border border-gray-600 min-h-[150px] max-h-60 overflow-y-auto">
                             <li class="text-gray-400">Selecciona un jugador para ver su inventario.</li>
                         </ul>
+                    </div>
+
+                    <!-- Implantar Deck Inicial -->
+                    <hr class="border-gray-600 my-8">
+                    <div>
+                        <h3 class="text-xl font-bold mb-3 text-gray-100">Implantar Deck Inicial</h3>
+                        <p class="text-sm text-gray-400 mb-4">
+                            Asigna todas las cartas del deck elegido al jugador seleccionado.
+                        </p>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                            <div>
+                                <label for="admin-starter-player-select" class="block text-sm font-medium text-gray-300 mb-2">Jugador:</label>
+                                <select id="admin-starter-player-select" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                    <option>Cargando...</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="admin-starter-deck-select" class="block text-sm font-medium text-gray-300 mb-2">Deck Inicial:</label>
+                                <select id="admin-starter-deck-select" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                    <option>Yugi</option>
+                                    <option>Kaiba</option>
+                                    <option>Joey</option>
+                                    <option>Pegasus</option>
+                                </select>
+                            </div>
+                            <div class="flex">
+                                <button id="admin-starter-implant-button" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                                    Implantar Deck
+                                </button>
+                            </div>
+                        </div>
+                        <p id="admin-starter-feedback" class="text-center text-yellow-300 text-sm mt-2 h-5 feedback-message opacity-0"></p>
                     </div>
 
                     <!-- NUEVO: Reseteo de Fábrica -->
@@ -228,6 +291,7 @@
             }
         });
     </script>
+    <script src="parallax.js" defer></script>
 </body>    
     <!-- Verificación de sesión e inicialización de funcionalidades -->
     <script type="module">

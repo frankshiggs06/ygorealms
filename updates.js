@@ -1,5 +1,5 @@
 // Importar las funciones necesarias de Firebase
-import { db, dbHistoryRef, collection, query, orderBy, limit, getDocs } from './firebase.js';
+import { db, dbHistoryRef, dbPlayersRef, query, orderBy, limit, getDocs } from './firebase.js';
 
 // Función para inicializar la barra de eventos en vivo
 function initLiveEventsTicker() {
@@ -142,18 +142,49 @@ function normalizeDuelHistoryText(text) {
     return text;
 }
 
-// Función para actualizar el ticker con el último evento
+// Obtener nombres de jugadores en modo fantasma desde la colección de jugadores
+async function fetchGhostNames() {
+    try {
+        const snap = await getDocs(dbPlayersRef);
+        const names = [];
+        snap.forEach(doc => {
+            const data = doc.data();
+            if (data && data.ghost && data.name) names.push(data.name);
+        });
+        return names;
+    } catch (e) {
+        console.warn('No se pudieron obtener jugadores fantasma:', e);
+        return [];
+    }
+}
+
+// Función para actualizar el ticker con el último evento (excluye jugadores fantasma)
 async function updateTickerWithLatestEvent() {
     try {
-        // Obtener el último evento de la colección de historia
-        const q = query(dbHistoryRef, orderBy("timestamp", "desc"), limit(1));
+        const ghostNames = new Set(await fetchGhostNames());
+        // Obtener varios eventos recientes para encontrar el primero visible
+        const q = query(dbHistoryRef, orderBy("timestamp", "desc"), limit(10));
         const querySnapshot = await getDocs(q);
-        
+
         if (!querySnapshot.empty) {
-            const lastEvent = querySnapshot.docs[0].data();
+            let chosenText = '';
+            for (const docSnap of querySnapshot.docs) {
+                const data = docSnap.data();
+                const text = data && data.text;
+                if (typeof text !== 'string') continue;
+                // Si ningún nombre fantasma aparece en el texto, usar este evento
+                let mentionsGhost = false;
+                for (const name of ghostNames) {
+                    if (text.includes(name)) { mentionsGhost = true; break; }
+                }
+                if (!mentionsGhost) {
+                    chosenText = normalizeDuelHistoryText(text);
+                    break;
+                }
+            }
             const tickerText = document.getElementById('ticker-text');
-            if (tickerText) {
-                tickerText.textContent = normalizeDuelHistoryText(lastEvent.text);
+            if (tickerText && chosenText) {
+                tickerText.textContent = chosenText;
             }
         }
     } catch (error) {

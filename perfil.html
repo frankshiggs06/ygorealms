@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Perfil • YGO REALMS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body class="min-h-screen p-4 sm:p-8">
+    <div id="app-content">
+        <header class="header-bg p-4 rounded-lg mb-8 shadow-xl text-white">
+            <img src="./images/header.png" alt="Header" class="mx-auto mb-4" style="max-width: 100%; height: auto;">
+            <div class="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center">
+                <h1 class="text-3xl font-bold tracking-tight mb-2 sm:mb-0">Yu-Gi-Oh! Tracker</h1>
+                <nav class="space-x-4">
+                    <a href="index.html" class="hover:text-gray-200 transition duration-150 font-medium">Inicio</a>
+                    <a href="packs.html" class="hover:text-gray-200 transition duration-150 font-medium">Packs</a>
+                    <a href="marketplace.html" class="hover:text-gray-200 transition duration-150 font-medium">Marketplace</a>
+                    <a href="perfil.html" class="hover:text-gray-200 transition duration-150 font-medium">Perfil</a>
+                    <a href="admin.html" class="hover:text-gray-200 transition duration-150 font-medium">Admin</a>
+                    <a href="juegos.html" class="hover:text-gray-200 transition duration-150 font-medium">Juegos</a>
+                </nav>
+            </div>
+            <div class="max-w-6xl mx-auto text-center mt-2 space-y-1">
+                <span class="text-xs text-gray-200 block">Usuario Conectado: <strong id="logged-in-user-display" class="font-mono text-yellow-300">Ninguno</strong></span>
+            </div>
+        </header>
+
+        <main class="max-w-6xl mx-auto space-y-12">
+            <section class="card p-6 rounded-xl text-white grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-gray-900 border border-gray-800 rounded-xl p-4 shadow-xl">
+                    <h2 class="text-lg font-bold mb-3">Avatar del perfil</h2>
+                    <div class="flex items-center gap-4">
+                        <img id="profile-avatar-img" src="./images/1.png" alt="Avatar" class="w-20 h-20 rounded-full border border-purple-700" />
+                        <p class="text-sm text-gray-300">El avatar se asigna automáticamente según tu deck.</p>
+                    </div>
+                </div>
+
+                <!-- Sección de cambio de nombre eliminada -->
+
+                <div class="bg-gray-900 border border-gray-800 rounded-xl p-4 shadow-xl md:col-span-2">
+                <h2 class="text-lg font-bold mb-3">Cambiar contraseña</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <input id="profile-password-old" type="password" class="bg-gray-950 border border-gray-700 rounded p-2 text-white" placeholder="Contraseña actual" />
+                    <input id="profile-password-new" type="password" class="bg-gray-950 border border-gray-700 rounded p-2 text-white" placeholder="Nueva contraseña" />
+                    <button id="profile-password-save" class="profile-button">Actualizar contraseña</button>
+                </div>
+                <div id="profile-password-feedback" class="text-xs mt-2 h-5"></div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script type="module" src="./auth.js"></script>
+    <script type="module" src="./perfil.js"></script>
+    <script src="parallax.js" defer></script>
+</body>
+</html>

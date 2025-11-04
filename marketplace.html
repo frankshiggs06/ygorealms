@@ -18,6 +18,7 @@
                     <a href="index.html" class="hover:text-gray-200 transition duration-150 font-medium">Inicio</a>
                     <a href="packs.html" class="hover:text-gray-200 transition duration-150 font-medium">Packs</a>
                     <a href="marketplace.html" class="hover:text-gray-200 transition duration-150 font-medium">Marketplace</a>
+                    <a href="perfil.html" class="hover:text-gray-200 transition duration-150 font-medium">Perfil</a>
                     <a href="admin.html" class="hover:text-gray-200 transition duration-150 font-medium">Admin</a>
                     <a href="juegos.html" class="hover:text-gray-200 transition duration-150 font-medium">Juegos</a>
                 </nav>
@@ -79,6 +80,45 @@
                     </div>
                 </div>
             </section>
+
+            <!-- Mensajes del Marketplace (estilo chat) -->
+            <section id="market-messages-panel" class="card p-6 rounded-xl text-white hidden">
+                <h2 class="text-2xl font-extrabold mb-4 text-teal-400 border-b border-teal-400/50 pb-2">
+                    💬 Mensajería del Marketplace
+                </h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="md:col-span-1">
+                        <h3 class="text-lg font-bold mb-2 text-gray-100">Conversaciones</h3>
+                        <div id="market-conversations-list" class="chat-sidebar"></div>
+                    </div>
+                    <div class="md:col-span-2">
+                        <h3 class="text-lg font-bold mb-2 text-gray-100">Chat</h3>
+                        <div id="market-chat-thread" class="chat-thread"></div>
+                        <!-- Barra de stickers -->
+                        <div id="chat-sticker-bar" class="sticker-bar mt-2">
+                            <button type="button" class="sticker-item" data-sticker-url="./stickers/sticker1.png"><img src="./stickers/sticker1.png" alt="sticker" /></button>
+                            <button type="button" class="sticker-item" data-sticker-url="./stickers/sticker2.png"><img src="./stickers/sticker2.png" alt="sticker" /></button>
+                            <button type="button" class="sticker-item" data-sticker-url="./stickers/sticker3.png"><img src="./stickers/sticker3.png" alt="sticker" /></button>
+                            <button type="button" class="sticker-item" data-sticker-url="./stickers/sticker4.png"><img src="./stickers/sticker4.png" alt="sticker" /></button>
+                            <button type="button" class="sticker-item" data-sticker-url="./stickers/sticker5.png"><img src="./stickers/sticker5.png" alt="sticker" /></button>
+                            <button type="button" class="sticker-item" data-sticker-url="./stickers/sticker6.png"><img src="./stickers/sticker6.png" alt="sticker" /></button>
+                            <button type="button" class="sticker-item" data-sticker-url="./stickers/sticker7.png"><img src="./stickers/sticker7.png" alt="sticker" /></button>
+                            <button type="button" class="sticker-item" data-sticker-url="./stickers/sticker8.png"><img src="./stickers/sticker8.png" alt="sticker" /></button>
+                            <button type="button" class="sticker-item" data-sticker-url="./stickers/sticker9.png"><img src="./stickers/sticker9.png" alt="sticker" /></button>
+                            <button type="button" class="sticker-item" data-sticker-url="./stickers/sticker10.png"><img src="./stickers/sticker10.png" alt="sticker" /></button>
+                            <button type="button" class="sticker-item" data-sticker-url="./stickers/sticker11.png"><img src="./stickers/sticker11.png" alt="sticker" /></button>
+                            <button type="button" class="sticker-item" data-sticker-url="./stickers/sticker12.png"><img src="./stickers/sticker12.png" alt="sticker" /></button>
+                            <button type="button" class="sticker-item" data-sticker-url="./stickers/sticker13.png"><img src="./stickers/sticker13.png" alt="sticker" /></button>
+                            <button type="button" class="sticker-item" data-sticker-url="./stickers/sticker14.png"><img src="./stickers/sticker14.png" alt="sticker" /></button>
+                            <button type="button" class="sticker-item" data-sticker-url="./stickers/sticker15.png"><img src="./stickers/sticker15.png" alt="sticker" /></button>
+                        </div>
+                        <div class="chat-composer mt-3 flex gap-2">
+                            <input id="chat-input" type="text" class="flex-1 bg-gray-900 border border-gray-700 rounded-lg p-2 text-white" placeholder="Escribe tu mensaje..." />
+                            <button id="chat-send-button" class="bg-teal-600 hover:bg-teal-700 text-white font-bold px-4 py-2 rounded-lg">Enviar</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
         </main>
     </div>
     
@@ -94,7 +134,7 @@
         
         // --- ¡AQUÍ ESTÁ LA CORRECCIÓN! ---
         // Importamos las funciones específicas que esta página necesita desde main.js
-        import { initMarketplace, updateMarketplaceSellDropdown, updateMarketplaceListings } from './main.js';
+        import { initMarketplace, updateMarketplaceSellDropdown, updateMarketplaceListings, initDeckBuilder, initMarketplaceMessaging } from './main.js';
         
         document.addEventListener('DOMContentLoaded', async () => {
             try {
@@ -113,12 +153,15 @@
                     initMarketplace();
                     updateMarketplaceSellDropdown();
                     updateMarketplaceListings();
+                    // Inicializar módulo de mensajería explícitamente (asegura DOM resuelto)
+                    initMarketplaceMessaging();
                     
                     // 3. Suscribirse a cambios de sesión
                     onSessionChange(() => {
                         updateUserDisplay();
                         updateMarketplaceSellDropdown();
                         updateMarketplaceListings();
+                        initDeckBuilder && initDeckBuilder();
                     });
 
                     // 4. Inicializar la barra de eventos en vivo
@@ -129,5 +172,19 @@
             }
         });
     </script>
+
+    <!-- Modal de Contacto -->
+    <div id="contact-modal" class="fixed inset-0 bg-black/60 flex items-center justify-center hidden z-50">
+        <div class="bg-gray-800 border border-gray-700 rounded-xl w-full max-w-lg p-6 text-white shadow-2xl">
+            <h3 class="text-xl font-bold mb-4">Contactar al Vendedor</h3>
+            <textarea id="contact-textarea" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-white h-32 resize-none" placeholder="Escribe tu mensaje... (puedes regatear o preguntar por otras cartas)"></textarea>
+            <div class="flex justify-end gap-3 mt-4">
+                <button id="contact-cancel-button" class="bg-gray-600 hover:bg-gray-700 text-white font-semibold px-4 py-2 rounded-lg">Cancelar</button>
+                <button id="contact-send-button" class="bg-teal-600 hover:bg-teal-700 text-white font-bold px-4 py-2 rounded-lg">Enviar</button>
+            </div>
+            <p class="text-xs text-gray-400 mt-2">Tus mensajes aparecerán debajo del marketplace en el chat.</p>
+        </div>
+    </div>
+    <script src="parallax.js" defer></script>
 </body>
 </html>

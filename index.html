@@ -22,6 +22,7 @@
                     <a href="index.html" class="hover:text-gray-200 transition duration-150 font-medium">Inicio</a>
                     <a href="packs.html" class="hover:text-gray-200 transition duration-150 font-medium">Packs</a>
                     <a href="marketplace.html" class="hover:text-gray-200 transition duration-150 font-medium">Marketplace</a>
+                    <a href="perfil.html" class="hover:text-gray-200 transition duration-150 font-medium">Perfil</a>
                     <a href="admin.html" class="hover:text-gray-200 transition duration-150 font-medium">Admin</a>
                     <a href="juegos.html" class="hover:text-gray-200 transition duration-150 font-medium">Juegos</a>
                 </nav>
@@ -305,9 +306,12 @@
         });
     </script>
     
+    <!-- Animaciones de secciones: slide-in alternado + parallax sutil -->
+    <script src="parallax.js" defer></script>
+    
     <!-- Verificación de sesión -->
     <script type="module">
-        import { initializeAuth, isLoggedIn, updateUserDisplay, onSessionChange, getCurrentUser, getPlayersCache, getDbRefs } from './auth.js';
+        import { initializeAuth, isLoggedIn, updateUserDisplay, onSessionChange, getCurrentUser, getPlayersCache, getDbRefs, STARTER_DECKS } from './auth.js';
         import { doc, updateDoc, addDoc } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js";
 
         // Verificar autenticación y actualizar el display de usuario
@@ -378,7 +382,13 @@
                 try {
                     const { players, history } = getDbRefs();
                     const playerRef = doc(players, player.id || player.name);
-                    await updateDoc(playerRef, { deck: chosen.name, deck_url: chosen.url, starter_assigned: true });
+                    // Construir y actualizar la colección del jugador con las cartas del deck
+                    const newCollection = { ...(player.card_collection || {}) };
+                    const cardsToAdd = Object.values(STARTER_DECKS[chosen.name]).flat();
+                    for (const card of cardsToAdd) {
+                        newCollection[card] = (newCollection[card] || 0) + 1;
+                    }
+                    await updateDoc(playerRef, { deck: chosen.name, deck_url: chosen.url, starter_assigned: true, card_collection: newCollection });
                     // Historia opcional
                     try {
                         await addDoc(history, {

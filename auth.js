@@ -19,6 +19,243 @@ let localPlayersCache = new Map();
 let localMarketplaceCache = new Map();
 
 // --- CONSTANTES ---
+// Listas completas de Decks Iniciales disponibles en toda la app
+export const STARTER_DECKS = {
+    Yugi: {
+        monsters: [
+            'Mystical Elf',
+            'Feral Imp',
+            'Winged Dragon, Guardian of the Fortress #1',
+            'Summoned Skull',
+            'Beaver Warrior',
+            'Dark Magician',
+            'Gaia The Fierce Knight',
+            'Curse of Dragon',
+            'Celtic Guardian',
+            'Mammoth Graveyard',
+            'Great White',
+            'Silver Fang',
+            'Giant Soldier of Stone',
+            'Dragon Zombie',
+            'Doma The Angel of Silence',
+            'Ansatsu',
+            'Witty Phantom',
+            'Claw Reacher',
+            'Mystic Clown',
+            'Ancient Elf',
+            'Magical Ghost',
+            'The Stern Mystic',
+            'Wall of Illusion',
+            'Neo the Magic Swordsman',
+            'Baron of the Fiend Sword',
+            'Man-Eating Treasure Chest',
+            'Sorcerer of the Doomed',
+            'Trap Master',
+            'Man-Eater Bug'
+        ],
+        spells: [
+            'Sword of Dark Destruction',
+            'Book of Secret Arts',
+            'Dark Hole',
+            'Dian Keto the Cure Master',
+            'Fissure',
+            'De-Spell',
+            'Monster Reborn',
+            'Change of Heart',
+            'Last Will',
+            'Soul Exchange',
+            'Card Destruction',
+            'Yami',
+            'Remove Trap'
+        ],
+        traps: [
+            'Trap Hole',
+            'Two-Pronged Attack',
+            'Reinforcements',
+            'Waboku',
+            'Dragon Capture Jar',
+            'Reverse Trap',
+            'Castle Walls',
+            'Ultimate Offering'
+        ]
+    },
+    Joey: {
+        monsters: [
+            'Red-Eyes Black Dragon',
+            '7 Colored Fish',
+            'Sky Scout',
+            'Darkfire Soldier #1',
+            'Armored Lizard',
+            'Island Turtle',
+            'Masaki the Legendary Swordsman',
+            'Spirit of the Harp',
+            'Baby Dragon',
+            'Flame Manipulator',
+            'Swordsman of Landstar',
+            'Gearfried the Iron Knight',
+            'Maha Vailo',
+            'Big Eye',
+            'Karate Man',
+            'White Magical Hat',
+            'Sangan',
+            'Princess of Tsurugi',
+            'Penguin Soldier',
+            'Time Wizard',
+            'Magician of Faith',
+            'Milus Radiant'
+        ],
+        spells: [
+            'Dragon Treasure',
+            'Malevolent Nuzzler',
+            'Mountain',
+            'Block Attack',
+            'Change of Heart',
+            'Dark Hole',
+            'De-Spell',
+            'Dian Keto the Cure Master',
+            'Eternal Rest',
+            'Fissure',
+            'Giant Trunade',
+            'Monster Reborn',
+            'Polymerization',
+            'Remove Trap',
+            'Shield & Sword',
+            'Scapegoat',
+            'The Reliable Guardian'
+        ],
+        traps: [
+            'Ultimate Offering',
+            'Seven Tools of the Bandit',
+            'Castle Walls',
+            'Fake Trap',
+            'Just Desserts',
+            'Reinforcements',
+            'Reverse Trap',
+            'Trap Hole',
+            'Waboku'
+        ],
+        extra: [
+            'Thousand Dragon',
+            'Flame Swordsman'
+        ]
+    },
+    Pegasus: {
+        monsters: [
+            'Ryu-Ran',
+            'Illusionist Faceless Mage',
+            'Rogue Doll',
+            'Uraby',
+            'Red Archery Girl',
+            'Aqua Madoor',
+            'Toon Alligator',
+            'Giant Soldier of Stone',
+            'Blue-Eyes Toon Dragon',
+            'Manga Ryu-Ran',
+            'Toon Summoned Skull',
+            'Toon Mermaid',
+            'Sonic Bird',
+            'Witch of the Black Forest',
+            'Dream Clown',
+            'Mask of Darkness',
+            "Hiro's Shadow Scout",
+            'Muka Muka',
+            'Man-Eater Bug',
+            'Hane-Hane',
+            'Jigen Bakudan',
+            'Armed Ninja',
+            'Relinquished'
+        ],
+        spells: [
+            'Toon World',
+            'Black Pendant',
+            'Ring of Magnetism',
+            'Yami',
+            'Change of Heart',
+            'Dark Hole',
+            'De-Spell',
+            'Dian Keto the Cure Master',
+            'Fissure',
+            'Graceful Charity',
+            'Monster Reborn',
+            'Remove Trap',
+            'Soul Release',
+            'Stop Defense',
+            'Mystical Space Typhoon',
+            'Rush Recklessly',
+            'Black Illusion Ritual'
+        ],
+        traps: [
+            "Robbin' Goblin",
+            'Ultimate Offering',
+            'Magic Jammer',
+            'Seven Tools of the Bandit',
+            'Castle Walls',
+            'Enchanted Javelin',
+            'Gryphon Wing',
+            'Reinforcements',
+            'Trap Hole',
+            'Waboku'
+        ]
+    },
+    Kaiba: {
+        monsters: [
+            'Blue-Eyes White Dragon',
+            'Judge Man',
+            'Swordstalker',
+            'Gyakutenno Megami',
+            'Rude Kaiser',
+            'La Jinn the Mystical Genie of the Lamp',
+            'Battle Ox',
+            'Ryu-Kishin Powered',
+            'Rogue Doll',
+            'Skull Red Bird',
+            'Kojikocy',
+            'Koumori Dragon',
+            'Pale Beast',
+            'Destroyer Golem',
+            'Mystic Clown',
+            'Uraby',
+            'Mystic Horseman',
+            'D. Human',
+            'Dark Titan of Terror',
+            'Ogre of the Black Shadow',
+            'Terra the Terrible',
+            'Dark Assailant',
+            'Hitotsu-Me Giant',
+            'Master & Expert',
+            'Ryu-Kishin',
+            'Unknown Warrior of Fiend',
+            'Lord of D.',
+            'Mysterious Puppeteer',
+            'The Wicked Worm Beast',
+            'Trap Master',
+            'Hane-Hane'
+        ],
+        spells: [
+            'Dark Energy',
+            'Invigoration',
+            'Sogen',
+            'Ancient Telescope',
+            'Dark Hole',
+            'De-Spell',
+            'Fissure',
+            'Monster Reborn',
+            'Ookazi',
+            'Remove Trap',
+            'The Flute of Summoning Dragon',
+            'The Inexperienced Spy'
+        ],
+        traps: [
+            'Ultimate Offering',
+            'Castle Walls',
+            'Just Desserts',
+            'Reinforcements',
+            'Reverse Trap',
+            'Trap Hole',
+            'Two-Pronged Attack'
+        ]
+    }
+};
 
 
 // --- CLASE PARA MANEJAR LA SESIÓN ---
@@ -32,7 +269,7 @@ class SessionManager {
     // Guardar sesión en localStorage
     saveSession(userData) {
         const sessionData = {
-            userId: userData.name,
+            userId: userData.id,
             userData: userData,
             timestamp: Date.now()
         };
@@ -161,12 +398,12 @@ function initPlayersListener() {
         
         const updatedPlayers = await Promise.all(playerPromises);
         localPlayersCache.clear();
-        updatedPlayers.forEach(player => localPlayersCache.set(player.name, player));
+        updatedPlayers.forEach(player => localPlayersCache.set(player.id, player));
         
         // Si hay un usuario logueado, actualizar sus datos
         if (sessionManager.isLoggedIn()) {
             const currentUser = sessionManager.getCurrentUser();
-            const updatedUser = localPlayersCache.get(currentUser.name);
+            const updatedUser = localPlayersCache.get(currentUser.id);
             if (updatedUser) {
                 sessionManager.saveSession(updatedUser);
             }
@@ -213,14 +450,14 @@ export async function initializeAuth() {
                     snapshot.forEach((doc) => {
                         const playerData = doc.data();
                         playerData.id = doc.id;
-                        localPlayersCache.set(playerData.name, playerData);
+                        localPlayersCache.set(playerData.id, playerData);
                     });
                     
                     // Cargar sesión existente si existe
                     const savedSession = sessionManager.loadSession();
                     if (savedSession) {
                         // Verificar que el usuario aún existe en la base de datos
-                        const userExists = localPlayersCache.get(savedSession.name);
+                        const userExists = localPlayersCache.get(savedSession.id);
                         if (userExists) {
                             sessionManager.saveSession(userExists);
                         } else {
