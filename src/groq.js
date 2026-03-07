@@ -87,11 +87,10 @@ export async function evaluateMemoryRound(correctWords, userInputs) {
                 role: "system",
                 content: `Eres un juez de freestyle. Evalúa un reto de memoria.
 Reglas:
-1. El usuario debía recordar estas 5 palabras en este orden exacto: ${correctWords.join(", ")}.
+1. El usuario debía recordar estas 6 palabras en este orden exacto: ${correctWords.join(", ")}.
 2. El usuario escribió: ${userInputs.join(", ")}.
-3. Da 2 puntos por cada palabra correcta en la posición correcta.
-4. Resta 1 punto si está bien escrita pero en el orden incorrecto.
-5. Devuelve ÚNICAMENTE un JSON: {"score": (1-10), "feedback": "breve crítica"}`
+3. Da puntaje basado en precisión y posición (máximo 10 puntos).
+4. Devuelve ÚNICAMENTE un JSON: {"score": (1-10), "feedback": "breve crítica"}`
             }
         ],
         temperature: 0.1,

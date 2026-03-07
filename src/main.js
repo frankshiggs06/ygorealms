@@ -242,7 +242,7 @@ function handleMatchStateChange(roomData) {
 async function startNextRound() {
     if (appState.currentRound === 3 && !appState.hasBonusPlayed) {
         appState.hasBonusPlayed = true;
-        const bonusWords = [getRandomWord(), getRandomWord(), getRandomWord(), getRandomWord(), getRandomWord()];
+        const bonusWords = [getRandomWord(), getRandomWord(), getRandomWord(), getRandomWord(), getRandomWord(), getRandomWord()];
         await updateMatchStatus(appState.roomId, "bonus", { bonusWords });
         return;
     }
@@ -362,7 +362,7 @@ async function enterBonusScreen(roomData) {
     const wordEl = document.getElementById('bonus-current-word');
     const waiting = document.getElementById('bonus-waiting');
     
-    for(let i=1; i<=5; i++) {
+    for(let i=1; i<=6; i++) {
         document.getElementById(`bonus-in-${i}`).value = "";
     }
     
@@ -375,13 +375,13 @@ async function enterBonusScreen(roomData) {
 
     for (let i = 0; i < words.length; i++) {
         wordEl.innerText = words[i];
-        await new Promise(r => setTimeout(r, 2000));
+        await new Promise(r => setTimeout(r, 1000));
     }
 
     display.classList.add('hidden');
     inputs.classList.remove('hidden');
     
-    let bonusTime = 10;
+    let bonusTime = 15;
     const btEl = document.getElementById('bonus-timer-text');
     btEl.innerText = bonusTime;
     
@@ -399,6 +399,7 @@ async function enterBonusScreen(roomData) {
                 document.getElementById('bonus-in-3').value.trim(),
                 document.getElementById('bonus-in-4').value.trim(),
                 document.getElementById('bonus-in-5').value.trim(),
+                document.getElementById('bonus-in-6').value.trim(),
             ];
             
             const aiResult = await evaluateMemoryRound(appState.bonusWords, answers);
