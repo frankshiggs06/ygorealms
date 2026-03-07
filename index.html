@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Rhymestrain</title>
+    <link rel="stylesheet" href="./src/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700;900&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="app" class="device-container">
+        <canvas id="particles-canvas"></canvas>
+        
+        <!-- LOGIN SCREEN -->
+        <section id="login-screen" class="screen active">
+            <div class="glow-bg"></div>
+            <div class="content">
+                <h1 class="logo">RHYME<br>STRAIN</h1>
+                <p class="subtitle">Entrena tus figuras literarias</p>
+                <div class="input-group">
+                    <input type="text" id="username-input" placeholder="Tu nombre de MC / Poeta" maxlength="15" autocomplete="off" />
+                    
+                    <button id="login-btn" class="primary-btn">Entrar</button>
+                    <div id="login-error" class="error-text"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- MAIN MENU SCREEN -->
+        <section id="menu-screen" class="screen hidden">
+            <div class="glow-bg"></div>
+            <div class="content">
+                <h1 class="logo">RHYME<br>STRAIN</h1>
+                <p class="subtitle" id="menu-welcome-text">Bienvenido, MC</p>
+                <div class="menu-options">
+                    <div class="settings-group" style="text-align: left; margin-bottom: 0.5rem;">
+                        <label for="wait-time-select">Tiempo de cada ronda:</label>
+                        <select id="wait-time-select">
+                            <option value="5">5 segundos</option>
+                            <option value="10">10 segundos</option>
+                            <option value="15">15 segundos</option>
+                            <option value="30" selected>30 segundos</option>
+                        </select>
+                    </div>
+                    <button id="menu-play-btn" class="primary-btn">INICIAR PARTIDA</button>
+                    <button id="menu-leaderboard-btn" class="secondary-btn">RANKING SEMANAL</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- LEADERBOARD SCREEN -->
+        <section id="leaderboard-screen" class="screen hidden">
+            <div class="glow-bg"></div>
+            <div class="content">
+                <h2 class="epic-title" style="margin-bottom: 2rem;">RANKING SEMANAL</h2>
+                <div id="leaderboard-list" class="leaderboard-container">
+                    <!-- Items injected via JS -->
+                </div>
+                <button id="leaderboard-back-btn" class="secondary-btn" style="margin-top: 2rem;">VOLVER AL MENÚ</button>
+            </div>
+        </section>
+
+        <!-- LOBBY SCREEN -->
+        <section id="lobby-screen" class="screen hidden">
+            <div class="glow-bg"></div>
+            <div class="header">
+                <div class="user-badge" id="lobby-username">Jugador</div>
+                <button id="logout-btn" class="icon-btn">🚪</button>
+            </div>
+            <div class="content lobby-content">
+                <div class="status-card" id="lobby-status-card">
+                    <div class="status-card-content">
+                        <h2 id="match-status">Buscando oponente...</h2>
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+                <div class="players-found hidden" id="players-found-panel">
+                    <div class="vs-row">
+                        <span id="player1-name" class="player-name highlight">Tú</span>
+                        <span class="vs-text">VS</span>
+                        <span id="player2-name" class="player-name">???</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- GAME SCREEN -->
+        <section id="game-screen" class="screen hidden">
+            <div class="game-header">
+                Ronda <span id="round-number">1</span>/5
+            </div>
+            <div class="timer-container">
+                <div class="timer-circle">
+                    <span id="timer-text">30</span>
+                </div>
+            </div>
+            <div class="word-card">
+                <h2 id="current-word">PALABRA</h2>
+            </div>
+            <div class="input-area">
+                <textarea id="game-input" placeholder="Escribe tu figura literaria aquí..." disabled></textarea>
+                <div class="word-count"><span id="word-count">0</span> / 15 palabras</div>
+            </div>
+            <div class="status-overlay hidden" id="waiting-overlay">
+                <p>Esperando la evaluación de la IA...</p>
+                <div class="spinner small"></div>
+            </div>
+        </section>
+
+        <!-- BONUS SCREEN (Memory Round) -->
+        <section id="bonus-screen" class="screen hidden">
+            <div class="glow-bg"></div>
+            <div class="content">
+                <h2 id="bonus-title" class="bonus-round-title">RONDA BONUS: MEMORIA</h2>
+                
+                <div id="bonus-word-display" class="bonus-word-box hidden">
+                    <span id="bonus-current-word">---</span>
+                </div>
+
+                <div id="bonus-input-panel" class="bonus-inputs hidden">
+                    <p class="bonus-instruction">¡Escribe las palabras en orden!</p>
+                    <div class="bonus-slots">
+                        <input type="text" id="bonus-in-1" placeholder="1ra palabra" autocomplete="off">
+                        <input type="text" id="bonus-in-2" placeholder="2da palabra" autocomplete="off">
+                        <input type="text" id="bonus-in-3" placeholder="3ra palabra" autocomplete="off">
+                        <input type="text" id="bonus-in-4" placeholder="4ta palabra" autocomplete="off">
+                        <input type="text" id="bonus-in-5" placeholder="5ta palabra" autocomplete="off">
+                    </div>
+                    <div class="bonus-timer">Tiempo: <span id="bonus-timer-text">10</span>s</div>
+                </div>
+
+                <div id="bonus-waiting" class="waiting-box hidden">
+                    <div class="spinner"></div>
+                    <p>Esperando al otro MC...</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- RESULTS SCREEN -->
+        <section id="results-screen" class="screen hidden">
+            <div class="glow-bg"></div>
+            <div class="content">
+                <h2>Resultados de la Ronda</h2>
+                <div class="results-boards">
+                    <div class="player-board" id="my-board">
+                        <h3 id="res-my-name">Tú</h3>
+                        <p class="res-text blur-text" id="res-my-text">...</p>
+                        <div class="score-badge" id="res-my-score">-</div>
+                    </div>
+                    <div class="player-board" id="opp-board">
+                        <h3 id="res-opp-name">Oponente</h3>
+                        <p class="res-text blur-text" id="res-opp-text">...</p>
+                        <div class="score-badge" id="res-opp-score">-</div>
+                    </div>
+                </div>
+                <div class="round-countdown hidden" id="next-round-countdown">
+                    Siguiente ronda en <span id="next-timer">5</span>...
+                </div>
+                <button id="finish-btn" class="primary-btn hidden">Ver Podio Final</button>
+            </div>
+        </section>
+
+        <!-- RECAP SCREEN (NEW) -->
+        <section id="recap-screen" class="screen hidden">
+            <div class="glow-bg"></div>
+            <div class="content">
+                <h2 class="epic-title">RECUENTO POÉTICO</h2>
+                <div id="recap-timeline" class="recap-container">
+                    <!-- Rounds will be injected here one by one -->
+                </div>
+                <button id="show-final-scores-btn" class="primary-btn hidden">Ver Destino Final</button>
+            </div>
+        </section>
+
+         <!-- END MATCH SCREEN -->
+         <section id="end-screen" class="screen hidden">
+            <div class="glow-bg victory"></div>
+            <div class="content">
+                <h1 id="match-winner" class="epic-winner">¡GANASTE!</h1>
+                <div class="final-scores-card">
+                    <div class="score-row">
+                        <span id="final-my-name">Tú</span>
+                        <span id="final-my-score" class="score-num">0</span>
+                    </div>
+                    <div class="score-row">
+                        <span id="final-opp-name">Oponente</span>
+                        <span id="final-opp-score" class="score-num">0</span>
+                    </div>
+                </div>
+                <button id="back-to-lobby-btn" class="primary-btn" onclick="location.reload()">Volver al Menú</button>
+            </div>
+        </section>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+</body>
+</html>
