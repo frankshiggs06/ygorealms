@@ -590,10 +590,18 @@ textarea {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 2rem;
-  font-size: 1.8rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+  font-size: 1.5rem;
   font-weight: 900;
   margin-top: 1rem;
+}
+
+@media (min-width: 600px) {
+  .vs-row {
+    font-size: 1.8rem;
+    gap: 2rem;
+  }
 }
 
 .epic-player-1 {
@@ -608,6 +616,18 @@ textarea {
   opacity: 0;
 }
 
+.epic-player-3 {
+  animation: slideUpEpic 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  display: inline-block;
+  opacity: 0;
+}
+
+.epic-player-4 {
+  animation: slideDownEpic 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  display: inline-block;
+  opacity: 0;
+}
+
 @keyframes slideRightEpic {
   0% { transform: translateX(-100px); opacity: 0; }
   100% { transform: translateX(0); opacity: 1; }
@@ -618,13 +638,29 @@ textarea {
   100% { transform: translateX(0); opacity: 1; }
 }
 
+@keyframes slideUpEpic {
+  0% { transform: translateY(100px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes slideDownEpic {
+  0% { transform: translateY(-100px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
 .vs-text {
   color: var(--secondary-color);
-  font-size: 3rem;
+  font-size: 1.5rem;
   font-style: italic;
   font-weight: 900;
   text-shadow: 0 0 20px var(--secondary-color);
   opacity: 0;
+}
+
+@media (min-width: 600px) {
+  .vs-text {
+    font-size: 3rem;
+  }
 }
 
 .epic-vs-text {
