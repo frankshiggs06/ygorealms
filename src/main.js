@@ -165,7 +165,7 @@ function handleMatchStateChange(roomData) {
     if (!roomData) return;
     
     // Determine player list from roomData
-    const playerSlots = Object.keys(roomData).filter(k => k.startsWith('player'));
+    const playerSlots = Object.keys(roomData).filter(k => /^player\d+$/.test(k));
     appState.playersCount = roomData.playersCount || playerSlots.length;
     
     appState.players = playerSlots.map(slot => ({
@@ -512,7 +512,7 @@ async function startRecapShow(roomData) {
         await new Promise(r => setTimeout(r, 50));
         card.classList.add('show');
         timeline.scrollTo({ top: timeline.scrollHeight, behavior: 'auto' });
-        await new Promise(r => setTimeout(r, 3000)); 
+        await new Promise(r => setTimeout(r, 4000)); 
     }
 
     finalBtn.classList.remove('hidden');
@@ -559,7 +559,8 @@ async function showEndScreen(roomData) {
         document.querySelector('.glow-bg.victory').style.background = 'radial-gradient(circle, var(--error) 0%, transparent 70%)';
     }
     
-    const finalFeedback = await evaluateFinalMatch(roomData.history, appState.players[0].name, appState.players[1].name);
+    const playerNames = appState.players.map(p => p.name).join(", ");
+    const finalFeedback = await evaluateFinalMatch(roomData.history, playerNames);
     
     const recapSummary = document.createElement('p');
     recapSummary.className = 'final-ai-summary';

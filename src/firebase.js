@@ -106,7 +106,7 @@ export async function submitText(roomId, userId, text) {
     const data = snap.val();
     if (!data) return;
 
-    const players = Object.keys(data).filter(k => k.startsWith('player'));
+    const players = Object.keys(data).filter(k => /^player\d+$/.test(k));
     const mySlot = players.find(p => data[p].id === userId);
     
     if (!mySlot) return;

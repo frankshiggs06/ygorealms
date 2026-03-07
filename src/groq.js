@@ -113,7 +113,7 @@ Reglas:
     }
 }
 
-export async function evaluateFinalMatch(history, username1, username2) {
+export async function evaluateFinalMatch(history, playerNamesString) {
     const apiKey = import.meta.env.VITE_GROQ_API_KEY;
     if (!apiKey) return "Sin API Key para resumen final.";
 
@@ -121,9 +121,13 @@ export async function evaluateFinalMatch(history, username1, username2) {
     let context = "";
     Object.keys(history).forEach(rNum => {
         const r = history[rNum];
-        context += `Ronda ${rNum} (${r.word}):\n`;
-        context += `- ${username1}: "${r.player1?.text}" (${r.player1?.score} pts)\n`;
-        context += `- ${username2}: "${r.player2?.text}" (${r.player2?.score} pts)\n\n`;
+        context += `Ronda ${rNum} (${r.word || 'n/a'}):\n`;
+        // Each player (player1, player2, player3, etc.)
+        Object.keys(r).filter(k => k.startsWith('player')).forEach(slot => {
+            const p = r[slot];
+            context += `- ${slot}: "${p.text}" (${p.score} pts)\n`;
+        });
+        context += "\n";
     });
 
     const payload = {
@@ -132,7 +136,7 @@ export async function evaluateFinalMatch(history, username1, username2) {
             {
                 role: "system",
                 content: `Eres un crítico literario legendario. Vas a dar un veredicto FINAL de la batalla de figuras literarias.
-Analiza quién tuvo más ingenio y técnica basándote en el historial.
+Analiza quién tuvo más ingenio y técnica basándote en el historial de los siguientes participantes: ${playerNamesString}.
 Sé breve (máximo 40 palabras). Da un veredicto épico y declara quién es el 'Maestro del RhymeStrain'.`
             },
             {
