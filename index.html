@@ -11,16 +11,19 @@
     <div id="app" class="device-container">
         <canvas id="particles-canvas"></canvas>
         
-        <!-- LOGIN SCREEN -->
+        <!-- LOGIN/SIGNUP SCREEN -->
         <section id="login-screen" class="screen active">
             <div class="glow-bg"></div>
             <div class="content">
                 <h1 class="logo">RHYME<br>STRAIN</h1>
-                <p class="subtitle">Entrena tus figuras literarias</p>
+                <p class="subtitle" id="auth-subtitle">Inicia sesión para jugar</p>
                 <div class="input-group">
+                    <input type="email" id="email-input" placeholder="Correo electrónico" autocomplete="email" />
                     <input type="text" id="username-input" placeholder="Tu nombre de MC / Poeta" maxlength="15" autocomplete="off" />
+                    <input type="password" id="password-input" placeholder="Contraseña" autocomplete="current-password" />
                     
                     <button id="login-btn" class="primary-btn">Entrar</button>
+                    <button id="toggle-auth-btn" class="text-link-btn">¿No tienes cuenta? Regístrate</button>
                     <div id="login-error" class="error-text"></div>
                 </div>
             </div>

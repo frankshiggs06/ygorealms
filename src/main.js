@@ -1,4 +1,4 @@
-import { setupFirebase, createOrJoinLobby, listenToMatch, updateMatchStatus, submitText, updateScore, updateWeeklyLeaderboard, getWeeklyLeaderboard } from './firebase.js';
+import { setupFirebase, createOrJoinLobby, listenToMatch, updateMatchStatus, submitText, updateScore, updateWeeklyLeaderboard, getWeeklyLeaderboard, loginWithEmail, signUpWithEmail, onAuthChange, logout } from './firebase.js';
 import { getRandomWord } from './words.js';
 import { evaluateMetaphor, evaluateFinalMatch, evaluateMemoryRound } from './groq.js';
 import { ParticleSystem } from './particles.js';
@@ -35,14 +35,19 @@ let appState = {
   isTimerActive: false,
   isRecapShown: false,
   bonusWords: [],
-  hasBonusPlayed: false
+  hasBonusPlayed: false,
+  isLoginMode: true
 };
 
 // Elements
+const emailInput = document.getElementById('email-input');
 const usernameInput = document.getElementById('username-input');
+const passwordInput = document.getElementById('password-input');
 const waitTimeSelect = document.getElementById('wait-time-select');
 const loginBtn = document.getElementById('login-btn');
+const toggleAuthBtn = document.getElementById('toggle-auth-btn');
 const loginError = document.getElementById('login-error');
+const authSubtitle = document.getElementById('auth-subtitle');
 
 // Menu Elements
 const menuPlayBtn = document.getElementById('menu-play-btn');
@@ -58,6 +63,10 @@ const playersFoundPanel = document.getElementById('players-found-panel');
 const player1Name = document.getElementById('player1-name');
 const player2Name = document.getElementById('player2-name');
 const logoutBtn = document.getElementById('logout-btn');
+logoutBtn.addEventListener('click', async () => {
+    await logout();
+    location.reload();
+});
 
 const timerText = document.getElementById('timer-text');
 const timerCircle = document.querySelector('.timer-circle');
@@ -78,24 +87,73 @@ function showScreen(screenKey) {
   });
 }
 
-// 1. INIT / LOGIN
+// 1. INIT / AUTH
+setupFirebase();
+
+onAuthChange((user) => {
+    if (user) {
+        appState.username = user.displayName || "MC Anónimo";
+        menuWelcomeText.innerText = `Bienvenido, ${appState.username}`;
+        showScreen('menu');
+        particles.start();
+    } else {
+        showScreen('login');
+    }
+});
+
+toggleAuthBtn.addEventListener('click', () => {
+    appState.isLoginMode = !appState.isLoginMode;
+    if (appState.isLoginMode) {
+        authSubtitle.innerText = "Inicia sesión para jugar";
+        usernameInput.classList.add('hidden');
+        loginBtn.innerText = "Entrar";
+        toggleAuthBtn.innerText = "¿No tienes cuenta? Regístrate";
+    } else {
+        authSubtitle.innerText = "Crea tu cuenta de MC";
+        usernameInput.classList.remove('hidden');
+        loginBtn.innerText = "Registrarse";
+        toggleAuthBtn.innerText = "¿Ya tienes cuenta? Inicia sesión";
+    }
+    loginError.innerText = "";
+});
+
 loginBtn.addEventListener('click', async () => {
+    const email = emailInput.value.trim();
+    const password = passwordInput.value.trim();
     const username = usernameInput.value.trim();
-    if (username.length < 3) {
-        loginError.innerText = "Mínimo 3 caracteres";
+
+    if (!email || !password) {
+        loginError.innerText = "Completa todos los campos";
         return;
     }
-    
-    appState.username = username;
 
-    // Initial Firebase connect (lazy)
-    setupFirebase();
+    if (!appState.isLoginMode && username.length < 3) {
+        loginError.innerText = "Nombre de MC demasiado corto";
+        return;
+    }
 
-    // Go to Main Menu
-    menuWelcomeText.innerText = `Bienvenido, ${username}`;
-    showScreen('menu');
-    particles.start(); // Start particles globally on Main Menu
+    loginBtn.disabled = true;
+    loginBtn.innerText = "Cargando...";
+
+    try {
+        if (appState.isLoginMode) {
+            await loginWithEmail(email, password);
+        } else {
+            await signUpWithEmail(email, password, username);
+        }
+    } catch (e) {
+        console.error(e);
+        loginError.innerText = e.code === 'auth/user-not-found' ? "Usuario no encontrado" : 
+                           e.code === 'auth/wrong-password' ? "Contraseña incorrecta" :
+                           e.code === 'auth/email-already-in-use' ? "El email ya está registrado" :
+                           "Error de autenticación";
+        loginBtn.disabled = false;
+        loginBtn.innerText = appState.isLoginMode ? "Entrar" : "Registrarse";
+    }
 });
+
+// Initially hide username input in login mode
+usernameInput.classList.add('hidden');
 
 // -- MENU INTERACTIONS --
 menuPlayBtn.addEventListener('click', async () => {

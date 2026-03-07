@@ -1,8 +1,10 @@
 import { initializeApp } from "firebase/app";
 import { getDatabase, ref, set, get, onValue, update, remove, onDisconnect } from "firebase/database";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, updateProfile } from "firebase/auth";
 
 let app;
 let db;
+let auth;
 
 export function setupFirebase() {
     if (app) return; // already initialized
@@ -17,13 +19,32 @@ export function setupFirebase() {
     };
     app = initializeApp(firebaseConfig);
     db = getDatabase(app);
+    auth = getAuth(app);
+}
+
+export async function loginWithEmail(email, password) {
+  return signInWithEmailAndPassword(auth, email, password);
+}
+
+export async function signUpWithEmail(email, password, username) {
+  const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+  await updateProfile(userCredential.user, { displayName: username });
+  return userCredential;
+}
+
+export function onAuthChange(callback) {
+  return onAuthStateChanged(auth, callback);
+}
+
+export async function logout() {
+  return signOut(auth);
 }
 
 export async function createOrJoinLobby(username, waitTime, onMatchFound) {
   const lobbyRef = ref(db, 'lobby');
   const lobbySnap = await get(lobbyRef);
   
-  const userId = `user_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+  const userId = auth.currentUser ? auth.currentUser.uid : `user_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
   
   if (lobbySnap.exists() && Object.keys(lobbySnap.val()).length > 0) {
     // Join
