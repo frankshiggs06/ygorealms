@@ -1,10 +1,8 @@
 import { initializeApp } from "firebase/app";
 import { getDatabase, ref, set, get, onValue, update, remove, onDisconnect } from "firebase/database";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, updateProfile } from "firebase/auth";
 
 let app;
 let db;
-let auth;
 
 export function setupFirebase() {
     if (app) return; // already initialized
@@ -19,74 +17,72 @@ export function setupFirebase() {
     };
     app = initializeApp(firebaseConfig);
     db = getDatabase(app);
-    auth = getAuth(app);
 }
 
-export async function loginWithEmail(email, password) {
-  return signInWithEmailAndPassword(auth, email, password);
-}
-
-export async function signUpWithEmail(email, password, username) {
-  const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-  await updateProfile(userCredential.user, { displayName: username });
-  return userCredential;
-}
-
-export function onAuthChange(callback) {
-  return onAuthStateChanged(auth, callback);
-}
-
-export async function logout() {
-  return signOut(auth);
-}
-
-export async function createOrJoinLobby(username, waitTime, onMatchFound) {
-  const lobbyRef = ref(db, 'lobby');
+export async function createOrJoinLobby(username, waitTime, playersCount, onMatchFound) {
+  const userId = `user_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+  const lobbyKey = `lobby_${playersCount}`;
+  const lobbyRef = ref(db, lobbyKey);
+  
   const lobbySnap = await get(lobbyRef);
+  let waitingPlayers = lobbySnap.exists() ? lobbySnap.val() : {};
   
-  const userId = auth.currentUser ? auth.currentUser.uid : `user_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-  
-  if (lobbySnap.exists() && Object.keys(lobbySnap.val()).length > 0) {
-    // Join
-    const waitingPlayers = lobbySnap.val();
-    const opponentId = Object.keys(waitingPlayers)[0];
-    const opponentName = waitingPlayers[opponentId].username;
-    
-    await remove(ref(db, `lobby/${opponentId}`));
-    
+  // Add myself to waiting list
+  waitingPlayers[userId] = { username };
+  await set(lobbyRef, waitingPlayers);
+  onDisconnect(ref(db, `${lobbyKey}/${userId}`)).remove();
+
+  // Check if we reached the required count
+  if (Object.keys(waitingPlayers).length >= playersCount) {
+    const playerIds = Object.keys(waitingPlayers).slice(0, playersCount);
+    const playersData = {};
+    playerIds.forEach((id, index) => {
+      playersData[`player${index + 1}`] = { 
+        id: id, 
+        name: waitingPlayers[id].username, 
+        score: 0, text: "", evalScore: 0, feedback: "" 
+      };
+    });
+
+    // Remove these players from lobby
+    for (const id of playerIds) {
+      await remove(ref(db, `${lobbyKey}/${id}`));
+    }
+
     const roomId = `room_${Date.now()}`;
     const roomRef = ref(db, `matches/${roomId}`);
     
     await set(roomRef, {
-      player1: { id: opponentId, name: opponentName, score: 0, text: "", evalScore: 0, feedback: "" },
-      player2: { id: userId, name: username, score: 0, text: "", evalScore: 0, feedback: "" },
+      ...playersData,
+      playersCount,
       currentRound: 0,
       status: "starting",
       word: "",
       waitTime: waitTime,
-      history: {} // Store { roundNum: { word, p1: {text, score, feedback}, p2: {...} } }
+      history: {}
     });
 
     onDisconnect(ref(db, `matches/${roomId}/status`)).set("abandoned");
-    setTimeout(onMatchFound, 500); // Trigger locally
+    setTimeout(onMatchFound, 500);
     
-    return { roomId, userId, isHost: false };
+    return { roomId, userId, isHost: true };
   } else {
-    // Wait
-    await set(ref(db, `lobby/${userId}`), { username });
-    onDisconnect(ref(db, `lobby/${userId}`)).remove();
-
+    // Wait for match
     return new Promise((resolve) => {
       const matchesRef = ref(db, 'matches');
       const unsubscribe = onValue(matchesRef, (snapshot) => {
         if (!snapshot.exists()) return;
         const matches = snapshot.val();
         for (const [roomId, room] of Object.entries(matches)) {
-          if (room.player1 && room.player1.id === userId) {
+          // Check if I am in this room
+          const players = Object.keys(room).filter(k => k.startsWith('player'));
+          const mySlot = players.find(p => room[p].id === userId);
+          
+          if (mySlot) {
              unsubscribe();
              onDisconnect(ref(db, `matches/${roomId}/status`)).set("abandoned");
              onMatchFound();
-             resolve({ roomId, userId, isHost: true });
+             resolve({ roomId, userId, isHost: mySlot === 'player1' });
           }
         }
       });
@@ -110,8 +106,11 @@ export async function submitText(roomId, userId, text) {
     const data = snap.val();
     if (!data) return;
 
-    const mySlot = data.player1.id === userId ? 'player1' : 'player2';
-    // Atomic update to avoid race conditions with other player
+    const players = Object.keys(data).filter(k => k.startsWith('player'));
+    const mySlot = players.find(p => data[p].id === userId);
+    
+    if (!mySlot) return;
+
     const updates = {};
     updates[`${mySlot}/text`] = text;
     await update(roomRef, updates);
@@ -126,17 +125,14 @@ export async function updateScore(roomId, playerSlot, newTotalScore, feedback, r
    const currentScore = data.score || 0;
    const delta = newTotalScore - currentScore;
 
-   // Get current word from room for history
    const roomSnap = await get(ref(db, `matches/${roomId}`));
    const roomWord = roundNum === "BONUS" ? "MEMORIA" : roomSnap.val().word;
 
    const updates = {};
-   // Update current round stats
    updates[`${playerSlot}/score`] = newTotalScore;
    updates[`${playerSlot}/evalScore`] = delta;
    updates[`${playerSlot}/feedback`] = feedback;
    
-   // Update history for recap
    updates[`history/${roundNum}/${playerSlot}`] = {
        text: snap.val().text || "(Vacio)",
        score: delta,
@@ -149,7 +145,6 @@ export async function updateScore(roomId, playerSlot, newTotalScore, feedback, r
 
 export async function updateWeeklyLeaderboard(username, score) {
     const now = new Date();
-    // Simple way to get a "weekly" key: Year-WeekNumber
     const startOfYear = new Date(now.getFullYear(), 0, 1);
     const weekNum = Math.ceil((((now - startOfYear) / 86400000) + startOfYear.getDay() + 1) / 7);
     const weekKey = `${now.getFullYear()}_W${weekNum}`;
@@ -175,6 +170,6 @@ export async function getWeeklyLeaderboard() {
     
     const data = snap.val();
     const arr = Object.keys(data).map(key => ({ username: key, score: data[key] }));
-    arr.sort((a,b) => b.score - a.score); // sort by score descending
+    arr.sort((a,b) => b.score - a.score);
     return arr;
 }

@@ -1,4 +1,4 @@
-import { setupFirebase, createOrJoinLobby, listenToMatch, updateMatchStatus, submitText, updateScore, updateWeeklyLeaderboard, getWeeklyLeaderboard, loginWithEmail, signUpWithEmail, onAuthChange, logout } from './firebase.js';
+import { setupFirebase, createOrJoinLobby, listenToMatch, updateMatchStatus, submitText, updateScore, updateWeeklyLeaderboard, getWeeklyLeaderboard } from './firebase.js';
 import { getRandomWord } from './words.js';
 import { evaluateMetaphor, evaluateFinalMatch, evaluateMemoryRound } from './groq.js';
 import { ParticleSystem } from './particles.js';
@@ -23,10 +23,9 @@ let appState = {
   roomId: null,
   userId: null,
   isHost: false,
-  opponentName: "???",
+  players: [], // {id, name, score, slot}
+  playersCount: 2,
   currentRound: 0,
-  myScore: 0,
-  oppScore: 0,
   currentWord: "",
   timerInterval: null,
   roundTime: 30, 
@@ -35,19 +34,15 @@ let appState = {
   isTimerActive: false,
   isRecapShown: false,
   bonusWords: [],
-  hasBonusPlayed: false,
-  isLoginMode: true
+  hasBonusPlayed: false
 };
 
 // Elements
-const emailInput = document.getElementById('email-input');
 const usernameInput = document.getElementById('username-input');
-const passwordInput = document.getElementById('password-input');
 const waitTimeSelect = document.getElementById('wait-time-select');
+const playerCountSelect = document.getElementById('player-count-select');
 const loginBtn = document.getElementById('login-btn');
-const toggleAuthBtn = document.getElementById('toggle-auth-btn');
 const loginError = document.getElementById('login-error');
-const authSubtitle = document.getElementById('auth-subtitle');
 
 // Menu Elements
 const menuPlayBtn = document.getElementById('menu-play-btn');
@@ -60,13 +55,6 @@ const leaderboardList = document.getElementById('leaderboard-list');
 const lobbyUsername = document.getElementById('lobby-username');
 const matchStatus = document.getElementById('match-status');
 const playersFoundPanel = document.getElementById('players-found-panel');
-const player1Name = document.getElementById('player1-name');
-const player2Name = document.getElementById('player2-name');
-const logoutBtn = document.getElementById('logout-btn');
-logoutBtn.addEventListener('click', async () => {
-    await logout();
-    location.reload();
-});
 
 const timerText = document.getElementById('timer-text');
 const timerCircle = document.querySelector('.timer-circle');
@@ -87,84 +75,32 @@ function showScreen(screenKey) {
   });
 }
 
-// 1. INIT / AUTH
+// 1. INIT / LOGIN
 setupFirebase();
 
-onAuthChange((user) => {
-    if (user) {
-        appState.username = user.displayName || "MC Anónimo";
-        menuWelcomeText.innerText = `Bienvenido, ${appState.username}`;
-        showScreen('menu');
-        particles.start();
-    } else {
-        showScreen('login');
-    }
-});
-
-toggleAuthBtn.addEventListener('click', () => {
-    appState.isLoginMode = !appState.isLoginMode;
-    if (appState.isLoginMode) {
-        authSubtitle.innerText = "Inicia sesión para jugar";
-        usernameInput.classList.add('hidden');
-        loginBtn.innerText = "Entrar";
-        toggleAuthBtn.innerText = "¿No tienes cuenta? Regístrate";
-    } else {
-        authSubtitle.innerText = "Crea tu cuenta de MC";
-        usernameInput.classList.remove('hidden');
-        loginBtn.innerText = "Registrarse";
-        toggleAuthBtn.innerText = "¿Ya tienes cuenta? Inicia sesión";
-    }
-    loginError.innerText = "";
-});
-
 loginBtn.addEventListener('click', async () => {
-    const email = emailInput.value.trim();
-    const password = passwordInput.value.trim();
     const username = usernameInput.value.trim();
-
-    if (!email || !password) {
-        loginError.innerText = "Completa todos los campos";
+    if (username.length < 3) {
+        loginError.innerText = "Mínimo 3 caracteres";
         return;
     }
-
-    if (!appState.isLoginMode && username.length < 3) {
-        loginError.innerText = "Nombre de MC demasiado corto";
-        return;
-    }
-
-    loginBtn.disabled = true;
-    loginBtn.innerText = "Cargando...";
-
-    try {
-        if (appState.isLoginMode) {
-            await loginWithEmail(email, password);
-        } else {
-            await signUpWithEmail(email, password, username);
-        }
-    } catch (e) {
-        console.error(e);
-        loginError.innerText = e.code === 'auth/user-not-found' ? "Usuario no encontrado" : 
-                           e.code === 'auth/wrong-password' ? "Contraseña incorrecta" :
-                           e.code === 'auth/email-already-in-use' ? "El email ya está registrado" :
-                           "Error de autenticación";
-        loginBtn.disabled = false;
-        loginBtn.innerText = appState.isLoginMode ? "Entrar" : "Registrarse";
-    }
+    
+    appState.username = username;
+    menuWelcomeText.innerText = `Bienvenido, ${username}`;
+    showScreen('menu');
+    particles.start();
 });
-
-// Initially hide username input in login mode
-usernameInput.classList.add('hidden');
 
 // -- MENU INTERACTIONS --
 menuPlayBtn.addEventListener('click', async () => {
     appState.roundTime = parseInt(waitTimeSelect.value);
+    appState.playersCount = parseInt(playerCountSelect.value);
     
     lobbyUsername.innerText = appState.username;
     showScreen('lobby');
     
     try {
-        // Find Match
-        const { roomId, userId, isHost } = await createOrJoinLobby(appState.username, appState.roundTime, onGameStartRequested);
+        const { roomId, userId, isHost } = await createOrJoinLobby(appState.username, appState.roundTime, appState.playersCount, onGameStartRequested);
 
         appState.roomId = roomId;
         appState.userId = userId;
@@ -194,9 +130,9 @@ menuLeaderboardBtn.addEventListener('click', async () => {
         const div = document.createElement('div');
         div.className = 'leaderboard-item';
         let rankColor = "var(--secondary-color)";
-        if (index === 0) rankColor = "#FFD700"; // Gold
-        if (index === 1) rankColor = "#C0C0C0"; // Silver
-        if (index === 2) rankColor = "#CD7F32"; // Bronze
+        if (index === 0) rankColor = "#FFD700";
+        if (index === 1) rankColor = "#C0C0C0";
+        if (index === 2) rankColor = "#CD7F32";
         
         div.innerHTML = `
             <div class="leaderboard-rank" style="color: ${rankColor}">#${index + 1}</div>
@@ -212,39 +148,56 @@ leaderboardBackBtn.addEventListener('click', () => {
 });
 
 function onGameStartRequested() {
-    // When 2 players found
     matchStatus.innerText = "¡Partida lista!";
     matchStatus.parentElement.querySelector('.spinner').classList.add('hidden');
     
-    // Add EPIC classes
     playersFoundPanel.classList.remove('hidden');
     playersFoundPanel.classList.add('epic-vs-reveal');
-    player1Name.classList.add('epic-player-1');
-    player2Name.classList.add('epic-player-2');
-    document.querySelector('.vs-text').classList.add('epic-vs-text');
 
-    player1Name.innerText = appState.username; // Highlight
-    // We get opponent from match state shortly
     setTimeout(() => {
         if(appState.isHost) {
             startNextRound();
         }
-    }, 4000); // 4 sec visual delay for epicness
+    }, 4000);
 }
 
 function handleMatchStateChange(roomData) {
     if (!roomData) return;
     
-    const mySlot = roomData.player1.id === appState.userId ? 'player1' : 'player2';
-    const oppSlot = mySlot === 'player1' ? 'player2' : 'player1';
+    // Determine player list from roomData
+    const playerSlots = Object.keys(roomData).filter(k => k.startsWith('player'));
+    appState.playersCount = roomData.playersCount || playerSlots.length;
     
-    appState.opponentName = roomData[oppSlot].name;
-    player2Name.innerText = appState.opponentName;
+    appState.players = playerSlots.map(slot => ({
+        ...roomData[slot],
+        slot: slot
+    }));
+
+    const myPlayer = appState.players.find(p => p.id === appState.userId);
+    if (myPlayer) {
+        appState.myScore = myPlayer.score;
+    }
+
+    // Update Lobby VS view
+    const vsContainer = document.getElementById('vs-container');
+    if (vsContainer) {
+        vsContainer.innerHTML = "";
+        appState.players.forEach((p, idx) => {
+            const span = document.createElement('span');
+            span.className = 'player-name' + (p.id === appState.userId ? ' highlight' : '');
+            span.innerText = p.name;
+            span.classList.add(`epic-player-${idx + 1}`);
+            vsContainer.appendChild(span);
+            
+            if (idx < appState.players.length - 1) {
+                const vs = document.createElement('span');
+                vs.className = 'vs-text epic-vs-text';
+                vs.innerText = 'VS';
+                vsContainer.appendChild(vs);
+            }
+        });
+    }
     
-    appState.myScore = roomData[mySlot].score;
-    appState.oppScore = roomData[oppSlot].score;
-    
-    // Check if status or round actually changed
     const statusChanged = roomData.status !== appState.lastStatus;
     const roundChanged = roomData.currentRound !== appState.lastRound;
 
@@ -255,7 +208,6 @@ function handleMatchStateChange(roomData) {
     }
 
     if (statusChanged || roundChanged) {
-        console.log(`Transitioning: ${appState.lastStatus} -> ${roomData.status}, Round: ${appState.lastRound} -> ${roomData.currentRound}`);
         appState.lastStatus = roomData.status;
         appState.lastRound = roomData.currentRound;
 
@@ -263,28 +215,27 @@ function handleMatchStateChange(roomData) {
             appState.currentWord = roomData.word;
             enterGameScreen(roomData);
         } else if (roomData.status === "grading") {
-            enterGradingScreen(roomData, mySlot, oppSlot);
+            enterGradingScreen(roomData);
         } else if (roomData.status === "bonus") {
-            enterBonusScreen(roomData, mySlot, oppSlot);
+            enterBonusScreen(roomData);
         } else if (roomData.status === "results") {
-            updateResultsUI(roomData, mySlot, oppSlot);
+            updateResultsUI(roomData);
             if (statusChanged) {
                 startResultsCountdown(); 
             }
         } else if (roomData.status === "recap") {
             if (!appState.isRecapShown) {
                 appState.isRecapShown = true;
-                startRecapShow(roomData, mySlot, oppSlot);
+                startRecapShow(roomData);
             }
         } else if (roomData.status === "finished") {
             showEndScreen(roomData);
         } else if (roomData.status === "abandoned") {
-            alert("El oponente se desconectó");
+            alert("Un jugador se desconectó");
             location.reload();
         }
     } else if (roomData.status === "results") {
-        // Even if status didn't change, update the UI (in case scores arrive late)
-        updateResultsUI(roomData, mySlot, oppSlot);
+        updateResultsUI(roomData);
     }
 }
 
@@ -302,24 +253,23 @@ async function startNextRound() {
     }
     
     const nextWord = getRandomWord();
-    // Reset round-specific data in one go
     const roundUpdates = {
         word: nextWord,
-        currentRound: appState.currentRound + 1,
-        "player1/text": "",
-        "player1/evalScore": 0,
-        "player1/feedback": "",
-        "player2/text": "",
-        "player2/evalScore": 0,
-        "player2/feedback": ""
+        currentRound: appState.currentRound + 1
     };
+    
+    for (let i = 1; i <= appState.playersCount; i++) {
+        roundUpdates[`player${i}/text`] = "";
+        roundUpdates[`player${i}/evalScore`] = 0;
+        roundUpdates[`player${i}/feedback`] = "";
+    }
+    
     await updateMatchStatus(appState.roomId, "playing", roundUpdates);
 }
 
-// 2. GAME LOOP
 function enterGameScreen(roomData) {
     showScreen('game');
-    particles.stop(); // Clean canvas for concentration
+    particles.stop();
     appState.isRecapShown = false; 
     waitingOverlay.classList.add('hidden');
     roundNumberEl.innerText = appState.currentRound;
@@ -371,14 +321,8 @@ async function finishGameInput() {
     waitingOverlay.classList.remove('hidden');
     const myText = gameInputEl.value.trim();
     
-    // Upload text to Firebase
-    const mySlot = appState.isHost ? 'player1' : 'player2'; // Not reliable, better determine slot before
-    // Need to cleanly determine slot, rely on myId.
-    // For simplicity, Firebase abstraction should handle this
     await submitText(appState.roomId, appState.userId, myText);
     
-    // Only HOST changes status to grading when both texts are essentially "locked in".
-    // Since we don't have perfect sync, if host finishes, wait 1 sec and declare grading.
     if(appState.isHost) {
         setTimeout(async () => {
              await updateMatchStatus(appState.roomId, "grading");
@@ -386,27 +330,23 @@ async function finishGameInput() {
     }
 }
 
-// 3. GRADING
-async function enterGradingScreen(roomData, mySlot, oppSlot) {
-    showScreen('game'); // Keep on game screen while grading
+async function enterGradingScreen(roomData) {
+    showScreen('game');
     waitingOverlay.classList.remove('hidden');
     waitingOverlay.querySelector('p').innerText = "La IA está evaluando tu texto...";
 
+    const myPlayer = appState.players.find(p => p.id === appState.userId);
+    const mySlot = myPlayer.slot;
     const word = roomData.word;
     let myText = roomData[mySlot].text;
     
-    // Fallback: if Firebase hasn't synced yet, use the local value from input
     if (!myText || myText.trim() === "") {
         myText = gameInputEl.value.trim();
     }
     
-    // Execute Groq API Call
     const aiResult = await evaluateMetaphor(word, myText);
+    await updateScore(appState.roomId, mySlot, myPlayer.score + aiResult.score, aiResult.feedback, appState.currentRound);
     
-    // Save to Firebase (PASS CURRENT ROUND NUM EXPLICITLY)
-    await updateScore(appState.roomId, mySlot, appState.myScore + aiResult.score, aiResult.feedback, appState.currentRound);
-    
-    // Host waits for both to be graded
     if(appState.isHost) {
         const waitTime = roomData.status === "bonus" ? 4000 : 8000;
         setTimeout(async () => {
@@ -415,15 +355,13 @@ async function enterGradingScreen(roomData, mySlot, oppSlot) {
     }
 }
 
-// 3.5 BONUS ROUND
-async function enterBonusScreen(roomData, mySlot, oppSlot) {
+async function enterBonusScreen(roomData) {
     showScreen('bonus');
     const display = document.getElementById('bonus-word-display');
     const inputs = document.getElementById('bonus-input-panel');
     const wordEl = document.getElementById('bonus-current-word');
     const waiting = document.getElementById('bonus-waiting');
     
-    // Clear previous inputs
     for(let i=1; i<=5; i++) {
         document.getElementById(`bonus-in-${i}`).value = "";
     }
@@ -435,13 +373,11 @@ async function enterBonusScreen(roomData, mySlot, oppSlot) {
     const words = roomData.bonusWords || [];
     appState.bonusWords = words;
 
-    // Show words context
     for (let i = 0; i < words.length; i++) {
         wordEl.innerText = words[i];
         await new Promise(r => setTimeout(r, 2000));
     }
 
-    // Now Input Phase
     display.classList.add('hidden');
     inputs.classList.remove('hidden');
     
@@ -466,45 +402,36 @@ async function enterBonusScreen(roomData, mySlot, oppSlot) {
             ];
             
             const aiResult = await evaluateMemoryRound(appState.bonusWords, answers);
-            // Save as text to show in results
             const ansText = `MEMORIA: ${answers.join(", ")}`;
             await submitText(appState.roomId, appState.userId, ansText);
-            await updateScore(appState.roomId, mySlot, appState.myScore + aiResult.score, aiResult.feedback, "BONUS");
+            
+            const myPlayer = appState.players.find(p => p.id === appState.userId);
+            await updateScore(appState.roomId, myPlayer.slot, myPlayer.score + aiResult.score, aiResult.feedback, "BONUS");
             
             if (appState.isHost) {
                 setTimeout(async () => {
                     await updateMatchStatus(appState.roomId, "results");
-                }, 8000); // Wait longer for API to evaluate both
+                }, 8000);
             }
         }
     }, 1000);
 }
 
-// 4. RESULTS
-function updateResultsUI(roomData, mySlot, oppSlot) {
+function updateResultsUI(roomData) {
     showScreen('results');
-    
-    const myData = roomData[mySlot];
-    const oppData = roomData[oppSlot];
+    const container = document.getElementById('results-boards-container');
+    container.innerHTML = "";
 
-    document.getElementById('res-my-text').innerText = myData.text || "(No escribió nada)";
-    document.getElementById('res-my-score').innerText = (myData.evalScore || 0) + " pts";
-    
-    document.getElementById('res-opp-text').innerText = oppData.text || "(No escribió nada)";
-    document.getElementById('res-opp-score').innerText = (oppData.evalScore || 0) + " pts";
-
-    // Dynamic feedback if you want to show it
-    if (myData.feedback) {
-        document.getElementById('res-my-name').innerText = appState.username + ": " + myData.feedback;
-    } else {
-        document.getElementById('res-my-name').innerText = appState.username;
-    }
-    
-    if (oppData.feedback) {
-        document.getElementById('res-opp-name').innerText = appState.opponentName + ": " + oppData.feedback;
-    } else {
-        document.getElementById('res-opp-name').innerText = appState.opponentName;
-    }
+    appState.players.forEach(p => {
+        const board = document.createElement('div');
+        board.className = 'player-board';
+        board.innerHTML = `
+            <h3>${p.name}${p.feedback ? ': ' + p.feedback : ''}</h3>
+            <p class="res-text">${p.text || "(No escribió nada)"}</p>
+            <div class="score-badge">${p.evalScore || 0} pts</div>
+        `;
+        container.appendChild(board);
+    });
 }
 
 function startResultsCountdown() {
@@ -515,7 +442,7 @@ function startResultsCountdown() {
     if (appState.currentRound < 5) {
         countdownPanel.classList.remove('hidden');
         finishBtn.classList.add('hidden');
-        let cd = 5; // Faster to read feedback
+        let cd = 7; 
         timerSpan.innerText = cd;
         const int = setInterval(() => {
             cd--;
@@ -536,12 +463,11 @@ function startResultsCountdown() {
     }
 }
 
-async function startRecapShow(roomData, mySlot, oppSlot) {
+async function startRecapShow(roomData) {
     showScreen('recap');
     const timeline = document.getElementById('recap-timeline');
     timeline.innerHTML = "";
     
-    // Convert to array and sort numerically by round number, putting BONUS between 3 and 4
     const history = roomData.history || {};
     const rounds = Object.keys(history).sort((a, b) => {
         const valA = a === "BONUS" ? 3.5 : parseInt(a);
@@ -555,40 +481,37 @@ async function startRecapShow(roomData, mySlot, oppSlot) {
 
     for (const rNum of rounds) {
         const round = history[rNum];
-        if (!round[mySlot] || !round[oppSlot]) continue;
-
         const card = document.createElement('div');
         card.className = 'recap-card';
         if (rNum === "BONUS") card.style.borderLeftColor = "var(--secondary-color)";
         
         const roundTitle = rNum === "BONUS" ? "RONDA BONUS: MEMORIA" : `RONDA ${rNum}`;
+        
+        let playersHTML = "";
+        appState.players.forEach(p => {
+            const pData = round[p.slot];
+            if (!pData) return;
+            playersHTML += `
+                <div class="recap-player-row" style="margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px;">
+                    <div class="recap-player-name">${p.name}</div>
+                    <div class="recap-player-text">"${pData.text || '...'}"</div>
+                    <div class="recap-player-score">${pData.score} pts</div>
+                    ${pData.feedback ? `<div class="recap-feedback">${pData.feedback}</div>` : ''}
+                </div>
+            `;
+        });
 
         card.innerHTML = `
             <div class="recap-round-num">${roundTitle}</div>
             <div class="recap-word">${round.word}</div>
-            <div class="recap-bars">
-                <div class="recap-player-row">
-                    <div class="recap-player-name">${appState.username}</div>
-                    <div class="recap-player-text">"${round[mySlot].text || '...'}"</div>
-                    <div class="recap-player-score">${round[mySlot].score} pts</div>
-                    ${round[mySlot].feedback ? `<div class="recap-feedback">${round[mySlot].feedback}</div>` : ''}
-                </div>
-                <div class="recap-player-row" style="margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">
-                    <div class="recap-player-name">${appState.opponentName}</div>
-                    <div class="recap-player-text">"${round[oppSlot].text || '...'}"</div>
-                    <div class="recap-player-score">${round[oppSlot].score} pts</div>
-                    ${round[oppSlot].feedback ? `<div class="recap-feedback">${round[oppSlot].feedback}</div>` : ''}
-                </div>
-            </div>
+            <div class="recap-bars">${playersHTML}</div>
         `;
         timeline.appendChild(card);
         
         await new Promise(r => setTimeout(r, 50));
         card.classList.add('show');
         timeline.scrollTo({ top: timeline.scrollHeight, behavior: 'auto' });
-        
-        // 2 seconds to read as per user request
-        await new Promise(r => setTimeout(r, 2000)); 
+        await new Promise(r => setTimeout(r, 3000)); 
     }
 
     finalBtn.classList.remove('hidden');
@@ -603,55 +526,42 @@ document.getElementById('show-final-scores-btn').addEventListener('click', () =>
     }
 });
 
-// 5. END MATCH
 async function showEndScreen(roomData) {
     showScreen('end');
-    particles.start(); // Bring particles back
+    particles.start();
     
-    document.getElementById('final-my-name').innerText = appState.username;
-    document.getElementById('final-my-score').innerText = appState.myScore;
+    const scoresList = document.getElementById('final-scores-list');
+    scoresList.innerHTML = "";
     
-    document.getElementById('final-opp-name').innerText = appState.opponentName;
-    document.getElementById('final-opp-score').innerText = appState.oppScore;
+    const sortedPlayers = [...appState.players].sort((a,b) => b.score - a.score);
     
-    // Update Leaderboard
+    sortedPlayers.forEach(p => {
+        const row = document.createElement('div');
+        row.className = 'score-row';
+        row.innerHTML = `
+            <span>${p.name}${p.id === appState.userId ? ' (Tú)' : ''}</span>
+            <span class="score-num">${p.score}</span>
+        `;
+        scoresList.appendChild(row);
+    });
+
     await updateWeeklyLeaderboard(appState.username, appState.myScore);
     
-    // Final AI Summary
     const finalVerdictEl = document.getElementById('match-winner');
+    const winner = sortedPlayers[0];
     
-    // Determine winner name immediately
-    let winnerName = "";
-    if (appState.myScore > appState.oppScore) {
-        winnerName = appState.username;
-        finalVerdictEl.innerText = `¡Felicidades ${winnerName}!`;
-    } else if (appState.myScore < appState.oppScore) {
-        winnerName = appState.opponentName;
-        finalVerdictEl.innerText = `¡Felicidades ${winnerName}!`;
+    if (winner.id === appState.userId) {
+        finalVerdictEl.innerText = "¡GANASTE!";
+        document.querySelector('.glow-bg.victory').style.background = 'radial-gradient(circle, var(--success) 0%, transparent 70%)';
     } else {
-        finalVerdictEl.innerText = "¡Un empate épico!";
+        finalVerdictEl.innerText = "FIN DE PARTIDA";
+        document.querySelector('.glow-bg.victory').style.background = 'radial-gradient(circle, var(--error) 0%, transparent 70%)';
     }
     
-    const finalFeedback = await evaluateFinalMatch(roomData.history, roomData.player1.name, roomData.player2.name);
+    const finalFeedback = await evaluateFinalMatch(roomData.history, appState.players[0].name, appState.players[1].name);
     
     const recapSummary = document.createElement('p');
     recapSummary.className = 'final-ai-summary';
     recapSummary.innerText = finalFeedback;
-    document.querySelector('.final-scores-card').after(recapSummary);
-    
-    const resultTitle = document.getElementById('match-winner');
-    if (appState.myScore > appState.oppScore) {
-        resultTitle.innerText = "¡GANASTE!";
-        document.querySelector('.glow-bg.victory').style.background = 'radial-gradient(circle, var(--success) 0%, transparent 70%)';
-    } else if (appState.myScore < appState.oppScore) {
-        resultTitle.innerText = "PERDISTE...";
-        document.querySelector('.glow-bg.victory').style.background = 'radial-gradient(circle, var(--error) 0%, transparent 70%)';
-    } else {
-        resultTitle.innerText = "¡EMPATE!";
-        document.querySelector('.glow-bg.victory').style.background = 'radial-gradient(circle, var(--secondary-color) 0%, transparent 70%)';
-    }
+    scoresList.after(recapSummary);
 }
-
-document.getElementById('back-to-lobby-btn').addEventListener('click', () => {
-    location.reload(); // Quick reset for now
-});

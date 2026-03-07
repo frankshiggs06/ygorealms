@@ -503,8 +503,14 @@ textarea {
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  margin-top: 2rem;
+  margin-top: 1rem;
+  overflow-y: auto;
+  max-height: 50vh;
+  padding-right: 5px;
 }
+
+.results-boards::-webkit-scrollbar { width: 4px; }
+.results-boards::-webkit-scrollbar-thumb { background: var(--primary-color); border-radius: 10px; }
 
 .player-board {
   background: rgba(255, 255, 255, 0.03);
