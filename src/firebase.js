@@ -85,10 +85,10 @@ export async function createOrJoinLobby(username, waitTime, playersCount, gameMo
                         const p = players[id];
                         playersData[`player${index + 1}`] = {
                             id: id,
-                            name: p.username,
-                            activePet: p.activePet,
-                            equipment: p.equipment,
-                            consumables: p.consumables,
+                            name: p.username || "Jugador",
+                            activePet: p.activePet || null,
+                            equipment: p.equipment || {},
+                            consumables: p.consumables || [],
                             score: 0, text: "", evalScore: 0, feedback: "", 
                             hp: p.activePet ? (p.activePet.hp || 40) : 40
                         };
