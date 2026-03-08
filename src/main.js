@@ -3,6 +3,7 @@ import { getRandomWord } from './words.js';
 import { evaluateMetaphor, evaluateFinalMatch, evaluateMemoryRound } from './groq.js';
 import { ParticleSystem } from './particles.js';
 import { PETS_DATA, SHOP_ITEMS, calculatePetStats } from './pets.js';
+import { EQUIPMENT_DATA, CONSUMABLES_DATA } from './items.js';
 
 // Main screen definitions
 const screens = {
@@ -40,7 +41,14 @@ let appState = {
   isRecapShown: false,
   bonusWords: [],
   hasBonusPlayed: false,
-  profile: null // Will hold the whole node from getUserProfile
+  profile: null, // Will hold the whole node from getUserProfile
+  activeBuffs: {
+      atkMulti: 1.0,
+      iaBonus: 0,
+      shield: false,
+      enemyDefMinus: 0, 
+      dmgFlatRed: 0
+  }
 };
 
 // Elements
@@ -165,6 +173,8 @@ loginBtn.addEventListener('click', async () => {
                         username: username,
                         skillPoints: 100,
                         inventory: { "food1": 0, "food2": 0, "water1": 0, "water2": 0, "health1":0, "acc1": 0, "acc2": 0 },
+                        equipment: { head: null, chest: null, hands: null, feet: null, weapon: null },
+                        consumables: [], // up to 3 keys "cons_1"
                         pet: null,
                         pin: pin
                     };
@@ -185,6 +195,11 @@ loginBtn.addEventListener('click', async () => {
                     document.getElementById('pin-input-direct').focus();
                     return;
                 }
+                
+                // Backwards compatibility for early accounts
+                if (!p.equipment) p.equipment = { head: null, chest: null, hands: null, feet: null, weapon: null };
+                if (!p.consumables) p.consumables = [];
+                
                 appState.profile = p;
             }
 
@@ -258,7 +273,7 @@ modeRetoBtn.addEventListener('click', async () => {
     showScreen('lobby');
     
     try {
-        const { roomId, userId, isHost } = await createOrJoinLobby(appState.username, appState.roundTime, appState.playersCount, "reto", null, onGameStartRequested);
+        const { roomId, userId, isHost } = await createOrJoinLobby(appState.username, appState.roundTime, appState.playersCount, "reto", null, appState.profile.equipment, appState.profile.consumables, onGameStartRequested);
 
         appState.roomId = roomId;
         appState.userId = userId;
@@ -288,7 +303,7 @@ modeBatallaBtn.addEventListener('click', async () => {
     showScreen('lobby');
     
     try {
-        const { roomId, userId, isHost } = await createOrJoinLobby(appState.username, appState.roundTime, 2, "batalla", appState.profile.pet, onGameStartRequested);
+        const { roomId, userId, isHost } = await createOrJoinLobby(appState.username, appState.roundTime, 2, "batalla", appState.profile.pet, appState.profile.equipment, appState.profile.consumables, onGameStartRequested);
 
         appState.roomId = roomId;
         appState.userId = userId;
@@ -353,18 +368,43 @@ menuPetBtn.addEventListener('click', () => {
 petBackBtn.addEventListener('click', () => showScreen('menu'));
 shopBackBtn.addEventListener('click', () => showScreen('menu'));
 
+let currentShopTab = 'food';
+
+document.querySelectorAll('.shop-tab').forEach(tab => {
+    tab.addEventListener('click', (e) => {
+        document.querySelectorAll('.shop-tab').forEach(t => t.classList.remove('active'));
+        e.target.classList.add('active');
+        currentShopTab = e.target.getAttribute('data-tab');
+        renderShop();
+    });
+});
+
 function renderShop() {
     const grid = document.getElementById('shop-items-grid');
     grid.innerHTML = "";
-    SHOP_ITEMS.forEach(item => {
-        const canAfford = appState.profile.skillPoints >= item.cost;
+    
+    let itemsToRender = [];
+    if (currentShopTab === 'food') {
+        itemsToRender = SHOP_ITEMS;
+    } else if (currentShopTab === 'equip') {
+        itemsToRender = EQUIPMENT_DATA;
+    } else if (currentShopTab === 'cons') {
+        itemsToRender = CONSUMABLES_DATA;
+    }
+
+    itemsToRender.forEach(item => {
+        // legacy items have "cost", new ones have "price"
+        const finalPrice = item.cost || item.price;
+        const icon = item.icon || (item.type === 'head' ? '🧢' : item.type === 'chest' ? '👕' : item.type === 'hands' ? '🧤' : item.type === 'feet' ? '👟' : item.type === 'weapon' ? '🎤' : '🧪');
+        
+        const canAfford = appState.profile.skillPoints >= finalPrice;
         const div = document.createElement('div');
         div.className = 'shop-item-card';
         div.innerHTML = `
-            <div class="shop-icon">${item.icon}</div>
+            <div class="shop-icon" style="font-size: 2rem;">${icon}</div>
             <div class="shop-name">${item.name}</div>
             <div class="shop-desc">${item.desc}</div>
-            <button class="shop-btn" ${canAfford ? '' : 'disabled'}>${item.cost} SP</button>
+            <button class="shop-btn" ${canAfford ? '' : 'disabled'}>${finalPrice} SP</button>
         `;
         div.querySelector('.shop-btn').addEventListener('click', () => buyItem(item));
         grid.appendChild(div);
@@ -392,10 +432,20 @@ async function buyItem(item) {
         appState.profile.pet = newPet;
         updates.pet = newPet;
         alert(`¡Felicidades! Has adoptado a ${petDef.name}.`);
-    } else {
-        appState.profile.inventory[item.id] = (appState.profile.inventory[item.id] || 0) + 1;
-        updates.inventory = appState.profile.inventory;
-    }
+        // Check if item is food, equipment, or consumable
+        if (item.type === 'consumable') {
+            // Check if player has space for consumables (max 3 unique/stack limits apply, but for now just raw inventory)
+            appState.profile.inventory[item.id] = (appState.profile.inventory[item.id] || 0) + 1;
+            updates.inventory = appState.profile.inventory;
+        } else if (['head','chest','hands','feet','weapon'].includes(item.type)) {
+            // Equipment goes to inventory
+            appState.profile.inventory[item.id] = (appState.profile.inventory[item.id] || 0) + 1;
+            updates.inventory = appState.profile.inventory;
+        } else {
+            // Legacy food
+            appState.profile.inventory[item.id] = (appState.profile.inventory[item.id] || 0) + 1;
+            updates.inventory = appState.profile.inventory;
+        }
     
     document.getElementById('shop-navbar-sp').innerText = appState.profile.skillPoints;
     if(document.getElementById('navbar-sp')) document.getElementById('navbar-sp').innerText = appState.profile.skillPoints;
@@ -452,31 +502,147 @@ function renderPetScreen() {
         document.getElementById('stat-hunger-bar').style.width = `${stats.hunger}%`;
         document.getElementById('stat-thirst-bar').style.width = `${stats.thirst}%`;
         document.getElementById('stat-health-bar').style.width = `${stats.health}%`;
+
+        // Load Equipment Slots
+        let totalAtkMulti = 1.0;
+        let totalDefMulti = 1.0;
+        
+        const slots = ['head', 'chest', 'hands', 'feet', 'weapon'];
+        slots.forEach(slot => {
+            const slotEl = document.getElementById(`slot-${slot}`);
+            const equipId = appState.profile.equipment ? appState.profile.equipment[slot] : null;
+            
+            if (equipId) {
+                const eqItem = EQUIPMENT_DATA.find(e => e.id === equipId);
+                if (eqItem) {
+                    const icon = eqItem.icon || (eqItem.type === 'head' ? '🧢' : eqItem.type === 'chest' ? '👕' : eqItem.type === 'hands' ? '🧤' : eqItem.type === 'feet' ? '👟' : eqItem.type === 'weapon' ? '🎤' : '❓');
+                    slotEl.innerHTML = `<span style="font-size:1.5rem;">${icon}</span>`;
+                    slotEl.setAttribute('data-filled', 'true');
+                    slotEl.title = eqItem.name;
+                    slotEl.onclick = () => unequipItem(slot);
+                    
+                    if(eqItem.stats) {
+                        totalAtkMulti *= eqItem.stats.atk || 1.0;
+                        totalDefMulti *= eqItem.stats.def || 1.0;
+                    }
+                }
+            } else {
+                const placeholders = {head:'🧢', chest:'👕', hands:'🧤', feet:'👟', weapon:'🎤'};
+                slotEl.innerHTML = `<span class="slot-placeholder">${placeholders[slot]}</span>`;
+                slotEl.setAttribute('data-filled', 'false');
+                slotEl.title = `Ranura ${slot} vacía`;
+                slotEl.onclick = null;
+            }
+        });
+        
+        document.getElementById('stand-atk-total').innerText = totalAtkMulti.toFixed(2) + 'x';
+        document.getElementById('stand-def-total').innerText = totalDefMulti.toFixed(2) + 'x';
         
         // Render Inventory inside pet screen
         const invGrid = document.getElementById('inventory-grid');
         invGrid.innerHTML = "";
-        SHOP_ITEMS.forEach(item => {
-            const amount = appState.profile.inventory[item.id] || 0;
+        
+        const allItemsFlat = [...SHOP_ITEMS, ...EQUIPMENT_DATA, ...CONSUMABLES_DATA];
+        
+        for (const [id, amount] of Object.entries(appState.profile.inventory || {})) {
             if (amount > 0) {
+                const item = allItemsFlat.find(i => i.id === id);
+                if (!item) continue;
+                
+                const icon = item.icon || (item.type === 'head' ? '🧢' : item.type === 'chest' ? '👕' : item.type === 'hands' ? '🧤' : item.type === 'feet' ? '👟' : item.type === 'weapon' ? '🎤' : '🧪');
+                const isEquip = ['head','chest','hands','feet','weapon'].includes(item.type);
+                const isConsumable = item.type === 'consumable';
+                
+                let actionBtnHTML = '';
+                if (isEquip) {
+                    actionBtnHTML = `<button class="shop-btn" style="padding:0.2rem 0.5rem; font-size:0.8rem; margin-top:5px; background:var(--secondary-color);">Equipar</button>`;
+                } else if (isConsumable) {
+                    actionBtnHTML = `<button class="shop-btn" style="padding:0.2rem 0.5rem; font-size:0.8rem; margin-top:5px; background:#f59e0b;">A Mochila</button>`;
+                } else if (item.type !== 'accessory') {
+                    actionBtnHTML = `<button class="shop-btn" style="padding:0.2rem 0.5rem; font-size:0.8rem; margin-top:5px;">Usar</button>`;
+                } else {
+                    actionBtnHTML = `<div style="font-size:0.7rem; color:var(--text-muted); margin-top:5px;">Accesorio</div>`;
+                }
+
                 const div = document.createElement('div');
                 div.className = 'shop-item-card';
                 div.innerHTML = `
-                    <div style="font-size:1.5rem">${item.icon}</div>
+                    <div style="font-size:1.5rem" title="${item.name}">${icon}</div>
                     <div style="font-size:0.8rem; font-weight:bold;">x${amount}</div>
-                    ${item.type !== 'accessory' ? '<button class="shop-btn" style="padding:0.2rem 0.5rem; font-size:0.8rem; margin-top:5px;">Usar</button>' : '<div style="font-size:0.7rem; color:var(--text-muted); margin-top:5px;">Accesorio</div>'}
+                    ${actionBtnHTML}
                 `;
-                if(item.type !== 'accessory') {
+                
+                if (isEquip) {
+                    div.querySelector('button').addEventListener('click', () => equipItem(item));
+                } else if (isConsumable) {
+                    div.querySelector('button').addEventListener('click', () => equipConsumable(item));
+                } else if (item.type !== 'accessory') {
                     div.querySelector('button').addEventListener('click', () => useItem(item));
                 }
                 invGrid.appendChild(div);
             }
-        });
+        }
         
         if (invGrid.innerHTML === "") {
             invGrid.innerHTML = `<p style="grid-column: 1 / -1; text-align:center; color: var(--text-muted);">Tu inventario está vacío. Ve a la Tienda.</p>`;
         }
     }
+}
+
+async function equipItem(item) {
+    if ((appState.profile.inventory[item.id] || 0) <= 0) return;
+    
+    // Unequip current item in slot if exists
+    if (appState.profile.equipment[item.type]) {
+        const currentItemId = appState.profile.equipment[item.type];
+        appState.profile.inventory[currentItemId] = (appState.profile.inventory[currentItemId] || 0) + 1;
+    }
+    
+    // Equip new item
+    appState.profile.equipment[item.type] = item.id;
+    appState.profile.inventory[item.id] -= 1;
+    
+    await updateUserProfile(appState.username, {
+        inventory: appState.profile.inventory,
+        equipment: appState.profile.equipment
+    });
+    
+    renderPetScreen();
+}
+
+async function unequipItem(slot) {
+    const equipId = appState.profile.equipment[slot];
+    if (!equipId) return;
+    
+    appState.profile.equipment[slot] = null;
+    appState.profile.inventory[equipId] = (appState.profile.inventory[equipId] || 0) + 1;
+    
+    await updateUserProfile(appState.username, {
+        inventory: appState.profile.inventory,
+        equipment: appState.profile.equipment
+    });
+    
+    renderPetScreen();
+}
+
+async function equipConsumable(item) {
+    if ((appState.profile.inventory[item.id] || 0) <= 0) return;
+    
+    if (appState.profile.consumables.length >= 3) {
+        alert("¡Tu mochila de consumibles ya está llena (Max 3)! Úsalos en batalla.");
+        return;
+    }
+    
+    appState.profile.consumables.push(item.id);
+    appState.profile.inventory[item.id] -= 1;
+    
+    await updateUserProfile(appState.username, {
+        inventory: appState.profile.inventory,
+        consumables: appState.profile.consumables
+    });
+    
+    renderPetScreen();
+    alert(`¡${item.name} añadido a la mochila de combate!`);
 }
 
 async function useItem(item) {
@@ -1010,6 +1176,35 @@ function enterBattleScreen(roomData) {
     document.querySelector('.battle-input-area').style.display = 'flex';
     document.getElementById('battle-dialog-text').innerText = "¿Qué figura literaria utilizarás?";
     
+    // Reset temporary buffs each round
+    appState.activeBuffs = { atkMulti: 1.0, iaBonus: 0, shield: false, enemyDefMinus: 0, dmgFlatRed: 0 };
+    
+    // Render Consumables
+    for (let i = 1; i <= 3; i++) {
+        const btn = document.getElementById(`battle-cons-${i}`);
+        if (!btn) continue;
+        const consId = appState.profile.consumables[i-1];
+        if (consId) {
+            const consDef = CONSUMABLES_DATA.find(c => c.id === consId);
+            if (consDef) {
+                btn.innerHTML = consDef.icon || '🧪';
+                btn.title = consDef.name;
+                btn.disabled = false;
+                btn.style.opacity = '1';
+                
+                // Remove old listeners by cloning
+                const newBtn = btn.cloneNode(true);
+                btn.parentNode.replaceChild(newBtn, btn);
+                newBtn.addEventListener('click', () => useBattleConsumable(i-1, consDef, newBtn));
+            }
+        } else {
+            btn.innerHTML = '';
+            btn.title = 'Vacío';
+            btn.disabled = true;
+            btn.style.opacity = '0.3';
+        }
+    }
+    
     const roundEl = document.getElementById('battle-round');
     if (roundEl) roundEl.innerText = `Ronda ${appState.currentRound}`;
     const wordEl = document.getElementById('battle-current-word');
@@ -1050,6 +1245,62 @@ function enterBattleScreen(roomData) {
     }
 }
 
+async function useBattleConsumable(index, consDef, btnEl) {
+    if (!appState.profile.consumables[index]) return; // Already used or empty
+    
+    // Apply buff
+    if (consDef.effect === "heal_15") {
+        // Heal locally instantly, will sync to opponents next round natively via damage resolution logic
+        const myPlayer = appState.players.find(p => p.id === appState.userId);
+        const mySlot = myPlayer.slot;
+        const myPetDef = PETS_DATA.find(p => p.id === (myPlayer.activePet?.id || "pet1")) || PETS_DATA[0];
+        
+        // This is a bit tricky because HP is tracked room-wide, but we can fake visual heal 
+        // We will just let it be a buff, handled in grading, or heal via firebase immediately?
+        // Simpler: Just heal via firebase immediately
+        import('./firebase.js').then(module => {
+            const fb = module;
+            // Get current match data
+            import('firebase/database').then(dbMod => {
+               const roomRef = dbMod.ref(module.db, `matches/${appState.roomId}/${mySlot}`);
+               dbMod.get(roomRef).then(snap => {
+                   let currentHp = 40;
+                   if (snap.exists() && snap.val().hp !== undefined) currentHp = snap.val().hp;
+                   const newHp = Math.min(myPetDef.hp, currentHp + 15);
+                   dbMod.update(dbMod.ref(module.db, `matches/${appState.roomId}`), {
+                       [`${mySlot}/hp`]: newHp
+                   });
+               });
+            });
+        });
+        document.getElementById('battle-dialog-text').innerText = "¡Te has curado 15 HP!";
+    } else if (consDef.effect === "ia_plus_2") {
+        appState.activeBuffs.iaBonus += 2;
+        document.getElementById('battle-dialog-text').innerText = "¡Bonus +2 IA garantizado!";
+    } else if (consDef.effect === "shield_50") {
+        appState.activeBuffs.shield = true;
+        document.getElementById('battle-dialog-text').innerText = "¡Escudo al 50% activado!";
+    } else if (consDef.effect === "atk_30") {
+        appState.activeBuffs.atkMulti += 0.3;
+        document.getElementById('battle-dialog-text').innerText = "¡Ataque +30% esta ronda!";
+    } else if (consDef.effect === "time_15") {
+        appState.roundTime += 15;
+        document.getElementById('battle-timer-text').innerText = parseInt(document.getElementById('battle-timer-text').innerText) + 15;
+        document.getElementById('battle-dialog-text').innerText = "¡+15 segundos añadidos!";
+    }
+
+    // Mark as used
+    appState.profile.consumables.splice(index, 1);
+    btnEl.disabled = true;
+    btnEl.style.opacity = '0.3';
+    btnEl.innerHTML = '';
+    btnEl.title = 'Usado';
+    
+    await updateUserProfile(appState.username, {
+        consumables: appState.profile.consumables
+    });
+}
+
 async function enterBattleGradingScreen(roomData) {
     showScreen('battle');
     document.getElementById('battle-waiting-overlay').classList.remove('hidden');
@@ -1071,9 +1322,44 @@ async function enterBattleGradingScreen(roomData) {
     const myPetDef = PETS_DATA.find(p => p.id === (myPlayer.activePet?.id || "pet1")) || PETS_DATA[0];
     const oppPetDef = PETS_DATA.find(p => p.id === (oppPlayer.activePet?.id || "pet1")) || PETS_DATA[0];
     
-    // Damage is now directly the score (1-10) as requested
-    let damageToDeal = Math.floor(aiResult.score);
-    if (isNaN(damageToDeal)) damageToDeal = 0;
+    // Calculate Multipliers
+    let myAtkMulti = 1.0;
+    
+    if (myPlayer.equipment) {
+        ['head', 'chest', 'hands', 'feet', 'weapon'].forEach(slot => {
+            const eqId = myPlayer.equipment[slot];
+            if (eqId) {
+                const item = EQUIPMENT_DATA.find(e => e.id === eqId);
+                if (item && item.stats && item.stats.atk) myAtkMulti *= item.stats.atk;
+            }
+        });
+    }
+    
+    let oppDefMulti = 1.0;
+    let oppShield = false; // We can't peek into opponent activeBuffs as they are local, 
+                           // but equipment is in standard firebase payload.
+    if (oppPlayer.equipment) {
+        ['head', 'chest', 'hands', 'feet', 'weapon'].forEach(slot => {
+            const eqId = oppPlayer.equipment[slot];
+            if (eqId) {
+                const item = EQUIPMENT_DATA.find(e => e.id === eqId);
+                if (item && item.stats && item.stats.def) oppDefMulti *= item.stats.def;
+            }
+        });
+    }
+
+    // Apply consumable buffs
+    const iaScore = Math.min(10, aiResult.score + appState.activeBuffs.iaBonus);
+    myAtkMulti += (appState.activeBuffs.atkMulti - 1.0); // additive from buffs like atk_30
+    
+    // Final Formula
+    // Base damage is (IA Score del 1 al 10) * (Mascota Base multiplier? Pet has no base atk implicitly, so just base score) * ATK Multi
+    // If we want "Ataque Base Mascota", wait... pet HP goes up to 40, damage is 1-10. So atk base is 1. 
+    // Damage = Score * AtkMulti / DefMulti
+    let finalDamage = Math.floor((iaScore * myAtkMulti) / oppDefMulti);
+    if (isNaN(finalDamage)) finalDamage = 0;
+    
+    let damageToDeal = finalDamage;
 
     
     await updateBattleDamage(appState.roomId, mySlot, oppSlot, damageToDeal, aiResult.score, aiResult.feedback, myText, appState.currentRound);

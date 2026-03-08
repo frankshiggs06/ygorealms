@@ -19,7 +19,7 @@ export function setupFirebase() {
     db = getDatabase(app);
 }
 
-export async function createOrJoinLobby(username, waitTime, playersCount, gameMode, activePet, onMatchFound) {
+export async function createOrJoinLobby(username, waitTime, playersCount, gameMode, activePet, equipment = null, consumables = [], onMatchFound) {
   const userId = `user_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
   const lobbyKey = `lobby_${gameMode}_${playersCount}`;
   const myLobbyRef = ref(db, `${lobbyKey}/${userId}`);
@@ -29,7 +29,9 @@ export async function createOrJoinLobby(username, waitTime, playersCount, gameMo
     // 2. Add myself to the lobby queue
     await set(myLobbyRef, { 
         username, 
-        activePet, 
+        activePet,
+        equipment: equipment || { head: null, chest: null, hands: null, feet: null, weapon: null },
+        consumables: consumables || [],
         roomId: null, 
         joinedAt: Date.now() 
     });
@@ -85,6 +87,8 @@ export async function createOrJoinLobby(username, waitTime, playersCount, gameMo
                             id: id,
                             name: p.username,
                             activePet: p.activePet,
+                            equipment: p.equipment,
+                            consumables: p.consumables,
                             score: 0, text: "", evalScore: 0, feedback: "", 
                             hp: p.activePet ? (p.activePet.hp || 40) : 40
                         };
