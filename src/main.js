@@ -1,4 +1,4 @@
-import { setupFirebase, createOrJoinLobby, listenToMatch, updateMatchStatus, submitText, updateScore, updateBattleDamage, updateWeeklyLeaderboard, getWeeklyLeaderboard, getUserProfile, updateUserProfile, awardSkillPoints, setupDisconnectHook, cancelDisconnectHook } from './firebase.js';
+import { setupFirebase, createOrJoinLobby, listenToMatch, updateMatchStatus, submitText, updateScore, updateBattleDamage, updateWeeklyLeaderboard, getWeeklyLeaderboard, getUserProfile, updateUserProfile, awardSkillPoints, setupDisconnectHook, cancelDisconnectHook, healPlayer } from './firebase.js';
 import { getRandomWord } from './words.js';
 import { evaluateMetaphor, evaluateFinalMatch, evaluateMemoryRound } from './groq.js';
 import { ParticleSystem } from './particles.js';
@@ -501,9 +501,38 @@ function renderPetScreen() {
         document.getElementById('active-pet-age').innerText = `Edad: ${stats.ageHours} horas`;
         document.getElementById('active-pet-svg').innerHTML = petDef.svg;
         
+        let localFun = appState.profile.pet.fun || 0;
+        
+        document.getElementById('active-pet-svg').onclick = async (e) => {
+            // Heart float animation
+            const heart = document.createElement('div');
+            heart.innerText = ['❤️','💖','✨'][Math.floor(Math.random() * 3)];
+            heart.className = 'floating-heart';
+            // Position near the click
+            const rect = e.currentTarget.getBoundingClientRect();
+            heart.style.left = (e.clientX - rect.left) + 'px';
+            heart.style.top = (e.clientY - rect.top) + 'px';
+            e.currentTarget.appendChild(heart);
+            setTimeout(() => heart.remove(), 800);
+            
+            // Bounce pet
+            e.currentTarget.classList.remove('pet-bounce');
+            void e.currentTarget.offsetWidth; // trigger reflow
+            e.currentTarget.classList.add('pet-bounce');
+            
+            // Logic
+            localFun += 5;
+            appState.profile.pet.fun = localFun;
+            document.getElementById('stat-fun-bar').style.width = `${Math.min(100, localFun)}%`;
+            
+            await updateUserProfile(appState.username, { pet: appState.profile.pet });
+        };
+        
         document.getElementById('stat-hunger-bar').style.width = `${stats.hunger}%`;
         document.getElementById('stat-thirst-bar').style.width = `${stats.thirst}%`;
         document.getElementById('stat-health-bar').style.width = `${stats.health}%`;
+        const funBar = document.getElementById('stat-fun-bar');
+        if(funBar) funBar.style.width = `${Math.min(100, localFun)}%`;
 
         // Load Equipment Slots
         let totalAtkMulti = 1.0;
@@ -629,6 +658,8 @@ async function unequipItem(slot) {
 
 async function equipConsumable(item) {
     if ((appState.profile.inventory[item.id] || 0) <= 0) return;
+    
+    if (!appState.profile.consumables) appState.profile.consumables = [];
     
     if (appState.profile.consumables.length >= 3) {
         alert("¡Tu mochila de consumibles ya está llena (Max 3)! Úsalos en batalla.");
@@ -1252,29 +1283,11 @@ async function useBattleConsumable(index, consDef, btnEl) {
     
     // Apply buff
     if (consDef.effect === "heal_15") {
-        // Heal locally instantly, will sync to opponents next round natively via damage resolution logic
         const myPlayer = appState.players.find(p => p.id === appState.userId);
         const mySlot = myPlayer.slot;
         const myPetDef = PETS_DATA.find(p => p.id === (myPlayer.activePet?.id || "pet1")) || PETS_DATA[0];
         
-        // This is a bit tricky because HP is tracked room-wide, but we can fake visual heal 
-        // We will just let it be a buff, handled in grading, or heal via firebase immediately?
-        // Simpler: Just heal via firebase immediately
-        import('./firebase.js').then(module => {
-            const fb = module;
-            // Get current match data
-            import('firebase/database').then(dbMod => {
-               const roomRef = dbMod.ref(module.db, `matches/${appState.roomId}/${mySlot}`);
-               dbMod.get(roomRef).then(snap => {
-                   let currentHp = 40;
-                   if (snap.exists() && snap.val().hp !== undefined) currentHp = snap.val().hp;
-                   const newHp = Math.min(myPetDef.hp, currentHp + 15);
-                   dbMod.update(dbMod.ref(module.db, `matches/${appState.roomId}`), {
-                       [`${mySlot}/hp`]: newHp
-                   });
-               });
-            });
-        });
+        healPlayer(appState.roomId, mySlot, 15, myPetDef.hp);
         document.getElementById('battle-dialog-text').innerText = "¡Te has curado 15 HP!";
     } else if (consDef.effect === "ia_plus_2") {
         appState.activeBuffs.iaBonus += 2;

@@ -286,3 +286,17 @@ export async function updateBattleDamage(roomId, playerSlot, targetSlot, damageT
     
     await update(roomRef, updates);
 }
+
+export async function healPlayer(roomId, playerSlot, healAmount, maxHp) {
+    const roomRef = ref(db, `matches/${roomId}`);
+    const snap = await get(roomRef);
+    if (!snap.exists()) return;
+    const room = snap.val();
+    
+    let currentHp = room[playerSlot]?.hp !== undefined ? room[playerSlot].hp : 40;
+    const newHp = Math.min(maxHp, currentHp + healAmount);
+    
+    const updates = {};
+    updates[`${playerSlot}/hp`] = newHp;
+    await update(roomRef, updates);
+}

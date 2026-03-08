@@ -438,6 +438,29 @@ select {
   100% { transform: rotate(360deg); }
 }
 
+@keyframes petBounce {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1) translateY(-10px); }
+  100% { transform: scale(1); }
+}
+
+.pet-bounce {
+  animation: petBounce 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes floatUp {
+  0% { transform: translateY(0) scale(1); opacity: 1; }
+  100% { transform: translateY(-50px) scale(1.5); opacity: 0; }
+}
+
+.floating-heart {
+  position: absolute;
+  pointer-events: none;
+  font-size: 1.5rem;
+  animation: floatUp 0.8s ease-out forwards;
+  z-index: 50;
+}
+
 /* Spinner */
 .spinner {
   width: 40px;
