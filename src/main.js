@@ -15,7 +15,8 @@ const screens = {
   recap: document.getElementById('recap-screen'),
   end: document.getElementById('end-screen'),
   pet: document.getElementById('pet-screen'),
-  shop: document.getElementById('shop-screen')
+  shop: document.getElementById('shop-screen'),
+  battle: document.getElementById('battle-screen')
 };
 
 const particles = new ParticleSystem('particles-canvas');
@@ -1005,14 +1006,14 @@ function enterBattleScreen(roomData) {
     const myPetDef = PETS_DATA.find(p => p.id === myPet.id) || PETS_DATA[0];
     const oppPetDef = PETS_DATA.find(p => p.id === oppPet.id) || PETS_DATA[0];
     
-    document.getElementById('player-pet-name').innerText = myPlayer.name;
-    document.getElementById('player-pet-svg').innerHTML = myPetDef.svg;
+    document.getElementById('my-pet-name').innerText = myPlayer.name;
+    document.getElementById('my-pet-visual').innerHTML = myPetDef.svg;
     const myHpPercent = Math.max(0, (roomData[myPlayer.slot].hp / myPetDef.hp) * 100);
-    document.getElementById('player-hp-fill').style.width = `${myHpPercent}%`;
-    document.getElementById('player-hp-fill').style.backgroundColor = getHpColor(myHpPercent);
+    document.getElementById('my-hp-fill').style.width = `${myHpPercent}%`;
+    document.getElementById('my-hp-fill').style.backgroundColor = getHpColor(myHpPercent);
 
     document.getElementById('opp-pet-name').innerText = oppPlayer.name;
-    document.getElementById('opp-pet-svg').innerHTML = oppPetDef.svg;
+    document.getElementById('opp-pet-visual').innerHTML = oppPetDef.svg;
     const oppHpPercent = Math.max(0, (roomData[oppPlayer.slot].hp / oppPetDef.hp) * 100);
     document.getElementById('opp-hp-fill').style.width = `${oppHpPercent}%`;
     document.getElementById('opp-hp-fill').style.backgroundColor = getHpColor(oppHpPercent);
@@ -1083,7 +1084,7 @@ async function playBattleResultsAnimation(roomData) {
     const updateHpBar = (slot, currentHp, maxHp) => {
         const percent = Math.max(0, (currentHp / maxHp) * 100);
         const isMe = roomData[slot].id === appState.userId;
-        const fillId = isMe ? 'player-hp-fill' : 'opp-hp-fill';
+        const fillId = isMe ? 'my-hp-fill' : 'opp-hp-fill';
         document.getElementById(fillId).style.width = `${percent}%`;
         document.getElementById(fillId).style.backgroundColor = getHpColor(percent);
     };
@@ -1092,8 +1093,8 @@ async function playBattleResultsAnimation(roomData) {
         dialog.innerText = `¡${attackerName} ataca! (Daño: ${damage})`;
         
         const isMeAtt = attacker.id === appState.userId;
-        const attContainer = document.getElementById(isMeAtt ? 'player-pet-container' : 'opp-pet-container');
-        const defContainer = document.getElementById(!isMeAtt ? 'player-pet-container' : 'opp-pet-container');
+        const attContainer = document.getElementById(isMeAtt ? 'my-pet-visual' : 'opp-pet-visual');
+        const defContainer = document.getElementById(!isMeAtt ? 'my-pet-visual' : 'opp-pet-visual');
         
         // Attack bump
         attContainer.style.transform = isMeAtt ? "translate(30px, -30px)" : "translate(-30px, 30px)";
