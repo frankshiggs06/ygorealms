@@ -9,6 +9,7 @@ const screens = {
   menu: document.getElementById('menu-screen'),
   leaderboard: document.getElementById('leaderboard-screen'),
   lobby: document.getElementById('lobby-screen'),
+  game: document.getElementById('game-screen'),
   results: document.getElementById('results-screen'),
   bonus: document.getElementById('bonus-screen'),
   recap: document.getElementById('recap-screen'),
@@ -32,8 +33,6 @@ let appState = {
   timerInterval: null,
   roundTime: 30, 
   lastStatus: "",
-  lastRound: 0,
-  isTimerActive: false,
   lastRound: 0,
   isTimerActive: false,
   isRecapShown: false,
@@ -64,6 +63,7 @@ const playersFoundPanel = document.getElementById('players-found-panel');
 const timerText = document.getElementById('timer-text');
 const timerCircle = document.querySelector('.timer-circle');
 const currentWordEl = document.getElementById('current-word');
+const gameInputEl = document.getElementById('game-input');
 const wordCountEl = document.getElementById('word-count');
 const roundNumberEl = document.getElementById('round-number');
 const waitingOverlay = document.getElementById('waiting-overlay');
