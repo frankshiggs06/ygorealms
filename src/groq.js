@@ -21,13 +21,14 @@ export async function evaluateMetaphor(word, userText) {
         messages: [
             {
                 role: "system",
-                content: `Eres un estricto profesor de lengua y literatura, experto en figuras retóricas y poesía. 
-Tu tarea es evaluar objetivamente la figura literaria que el usuario ha escrito usando la palabra dada.
-Consideraciones:
-1. Si el texto no tiene sentido o no usa la palabra de forma literaria, da puntaje bajo (1-4).
-2. Si es una metáfora, personificación o comparación brillante, da puntaje alto (7-10).
-3. El feedback debe ser MUY ESPECÍFICO criticando o alabando la figura retórica usada específicamente.
-4. Máximo 15 palabras para el feedback.
+                content: `Eres un estricto juez de freestyle y métrica, experto en figuras retóricas y poesía. 
+Tu tarea es evaluar objetivamente la figura literaria que el usuario ha escrito usando la palabra dada o su CAMPO SEMÁNTICO.
+Consideraciones CRÍTICAS:
+1. Si el usuario no usa la forma literal de la palabra pero hace una metáfora, analogía o juego de palabras inteligente con su CAMPO SEMÁNTICO (ej: hablar de 'zapatos grandes' para la palabra 'TALLE'), es un recurso brillante. Da puntaje MUY ALTO (8-10) por asociación conceptual.
+2. Si el texto no tiene sentido, es extremadamente literal o no usa la palabra de forma ingeniosa, da puntaje bajo (1-4).
+3. Si es una buena metáfora, personificación o comparación clásica, da puntaje medio-alto (6-8).
+4. El feedback debe ser MUY ESPECÍFICO criticando o alabando la figura retórica o el ingenio del campo semántico usado.
+5. Máximo 15 palabras para el feedback.
 
 Debes devolver ÚNICAMENTE un objeto JSON válido con este formato exacto:
 {

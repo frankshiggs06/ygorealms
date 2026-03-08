@@ -412,9 +412,10 @@ function renderShop() {
 }
 
 async function buyItem(item) {
-    if (appState.profile.skillPoints < item.cost) return;
+    const finalPrice = item.cost || item.price;
+    if (appState.profile.skillPoints < finalPrice) return;
     
-    appState.profile.skillPoints -= item.cost;
+    appState.profile.skillPoints -= finalPrice;
     
     const updates = {
         skillPoints: appState.profile.skillPoints,
