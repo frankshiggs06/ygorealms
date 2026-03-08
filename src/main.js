@@ -517,6 +517,7 @@ function handleMatchStateChange(roomData) {
         ...roomData[slot],
         slot: slot
     }));
+    appState.gameMode = roomData.gameMode;
 
     const myPlayer = appState.players.find(p => p.id === appState.userId);
     if (myPlayer) {
@@ -600,16 +601,19 @@ async function startNextRound() {
         await updateMatchStatus(appState.roomId, "bonus", { bonusWords });
         return;
     }
+    const nextRound = appState.currentRound + 1;
+    const isBattle = appState.gameMode === "batalla";
 
-    if (appState.currentRound >= 5) {
-        await updateMatchStatus(appState.roomId, "finished");
+    if (!isBattle && nextRound > 5) {
+        await updateMatchStatus(appState.roomId, "recap");
         return;
     }
-    
+
     const nextWord = getRandomWord();
     const roundUpdates = {
         word: nextWord,
-        currentRound: appState.currentRound + 1
+        currentRound: nextRound,
+        status: "playing"
     };
     
     for (let i = 1; i <= appState.playersCount; i++) {
@@ -1093,14 +1097,21 @@ async function playBattleResultsAnimation(roomData) {
         document.getElementById(fillId).style.backgroundColor = getHpColor(percent);
     };
     
-    const animAttack = async (attacker, defender, damage, maxHpDef, hpTrackerDef, attackerName) => {
-        dialog.innerText = `¡${attackerName} ataca! (Daño: ${damage})`;
+    const animAttack = async (attacker, defender, damage, maxHpDef, hpTrackerDef, attackerName, feedback) => {
+        dialog.innerText = `¡${attackerName} ataca! (Puntos: ${damage})`;
         
         const isMeAtt = attacker.id === appState.userId;
         const attContainer = document.getElementById(isMeAtt ? 'my-pet-visual' : 'opp-pet-visual');
         const defContainer = document.getElementById(!isMeAtt ? 'my-pet-visual' : 'opp-pet-visual');
         
         if (!attContainer || !defContainer) return hpTrackerDef - damage;
+
+        // Feedback of the attack
+        if (feedback) {
+            setTimeout(() => {
+                dialog.innerText = feedback;
+            }, 1000);
+        }
 
         // Attack bump
         attContainer.style.transform = isMeAtt ? "translate(30px, -30px)" : "translate(-30px, 30px)";
@@ -1115,27 +1126,26 @@ async function playBattleResultsAnimation(roomData) {
         const newHp = Math.max(0, hpTrackerDef - damage);
         updateHpBar(defender.slot, newHp, maxHpDef);
         
-        await new Promise(r => setTimeout(r, 1000));
+        await new Promise(r => setTimeout(r, 2500)); // Longer pause to read feedback
         return newHp;
     };
 
     // P1 Attacks P2
-    p2HpTracker = await animAttack(p1, p2, (p1.evalScore || 0), maxHpP2, p2HpTracker, p1.name);
+    p2HpTracker = await animAttack(p1, p2, (p1.evalScore || 0), maxHpP2, p2HpTracker, p1.name, p1.feedback);
     
-    // P2 Attacks P1 (only if P2 is still alive, but since damage is simultaneous, we play it anyway)
-    p1HpTracker = await animAttack(p2, p1, (p2.evalScore || 0), maxHpP1, p1HpTracker, p2.name);
+    // P2 Attacks P1
+    p1HpTracker = await animAttack(p2, p1, (p2.evalScore || 0), maxHpP1, p1HpTracker, p2.name, p2.feedback);
 
     if (appState.isHost) {
-        if (p1HpTracker <= 0 || p2HpTracker <= 0 || appState.currentRound >= 5) {
-            // Wait for animations to finish
+        if (p1HpTracker <= 0 || p2HpTracker <= 0) {
             setTimeout(async () => { 
                 await updateMatchStatus(appState.roomId, "finished"); 
-            }, 3000);
+            }, 1000);
         } else {
-            // Start next round after animations
+            // Wait 2 seconds before starting next round
             setTimeout(async () => {
                 startNextRound();
-            }, 3000);
+            }, 2000);
         }
     }
 }
@@ -1164,7 +1174,7 @@ async function endBattleScreen(roomData) {
     const isWinner = winnerId === appState.userId;
     
     // SP Rewards
-    const spReward = isWinner ? 200 : 30;
+    const spReward = isWinner ? 30 : 5;
     
     const scoresList = document.getElementById('final-scores-list');
     scoresList.innerHTML = `<div class="score-row"><span style="color:${isWinner ? '#4caf50' : '#f44336'}; font-size:1.5rem; text-align:center; width:100%;">${isWinner ? '¡VICTORIA!' : 'DERROTA'}</span></div>
