@@ -432,9 +432,9 @@ async function buyItem(item) {
         appState.profile.pet = newPet;
         updates.pet = newPet;
         alert(`¡Felicidades! Has adoptado a ${petDef.name}.`);
+    } else {
         // Check if item is food, equipment, or consumable
         if (item.type === 'consumable') {
-            // Check if player has space for consumables (max 3 unique/stack limits apply, but for now just raw inventory)
             appState.profile.inventory[item.id] = (appState.profile.inventory[item.id] || 0) + 1;
             updates.inventory = appState.profile.inventory;
         } else if (['head','chest','hands','feet','weapon'].includes(item.type)) {
@@ -446,6 +446,7 @@ async function buyItem(item) {
             appState.profile.inventory[item.id] = (appState.profile.inventory[item.id] || 0) + 1;
             updates.inventory = appState.profile.inventory;
         }
+    }
     
     document.getElementById('shop-navbar-sp').innerText = appState.profile.skillPoints;
     if(document.getElementById('navbar-sp')) document.getElementById('navbar-sp').innerText = appState.profile.skillPoints;
