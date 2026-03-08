@@ -1106,7 +1106,7 @@ async function playBattleResultsAnimation(roomData) {
         document.getElementById(textId).innerText = `${Math.ceil(currentHp)}/${maxHp}`;
     };
     
-    const animAttack = async (attacker, defender, damage, maxHpDef, hpTrackerDef, attackerName, feedback) => {
+    const animAttack = async (attacker, defender, damage, maxHpDef, hpTrackerDef, attackerName, feedback, defSlot) => {
         dialog.innerText = `¡${attackerName} ataca! (Puntos: ${damage})\n${feedback ? feedback : ''}`;
         
         const isMeAtt = attacker.id === appState.userId;
@@ -1133,17 +1133,17 @@ async function playBattleResultsAnimation(roomData) {
         setTimeout(() => defContainer.classList.remove('take-damage'), 300);
         
         const newHp = Math.max(0, hpTrackerDef - damage);
-        updateHpBar(defender.slot, newHp, maxHpDef);
+        updateHpBar(defSlot, newHp, maxHpDef);
         
         await new Promise(r => setTimeout(r, 2000)); // 2 seconds to read feedback
         return newHp;
     };
 
     // P1 Attacks P2
-    p2HpTracker = await animAttack(p1, p2, (p1.evalScore || 0), maxHpP2, p2HpTracker, p1.name, p1.feedback);
+    p2HpTracker = await animAttack(p1, p2, (p1.evalScore || 0), maxHpP2, p2HpTracker, p1.name, p1.feedback, "player2");
     
     // P2 Attacks P1
-    p1HpTracker = await animAttack(p2, p1, (p2.evalScore || 0), maxHpP1, p1HpTracker, p2.name, p2.feedback);
+    p1HpTracker = await animAttack(p2, p1, (p2.evalScore || 0), maxHpP1, p1HpTracker, p2.name, p2.feedback, "player1");
 
     if (appState.isHost) {
         if (p1HpTracker <= 0 || p2HpTracker <= 0) {
