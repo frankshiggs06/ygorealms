@@ -65,7 +65,8 @@ export async function createOrJoinLobby(username, waitTime, playersCount, onMatc
     onDisconnect(ref(db, `matches/${roomId}/status`)).set("abandoned");
     setTimeout(onMatchFound, 500);
     
-    return { roomId, userId, isHost: true };
+    const mySlotIndex = playerIds.indexOf(userId);
+    return { roomId, userId, isHost: mySlotIndex === 0 };
   } else {
     // Wait for match
     return new Promise((resolve) => {

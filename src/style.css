@@ -74,6 +74,11 @@ body {
   transition: opacity 0.4s ease, transform 0.4s ease;
   transform: translateY(20px);
   z-index: 10;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.screen::-webkit-scrollbar {
+  width: 0px;
 }
 
 .screen.active {

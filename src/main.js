@@ -428,7 +428,7 @@ function updateResultsUI(roomData) {
         board.className = 'player-board';
         board.innerHTML = `
             <h3>${p.name}${p.feedback ? ': ' + p.feedback : ''}</h3>
-            <p class="res-text">${p.text || "(No escribió nada)"}</p>
+            <p class="res-text blur-text">${p.text || "(No escribió nada)"}</p>
             <div class="score-badge">${p.evalScore || 0} pts</div>
         `;
         container.appendChild(board);
@@ -530,6 +530,10 @@ document.getElementById('show-final-scores-btn').addEventListener('click', () =>
 async function showEndScreen(roomData) {
     showScreen('end');
     particles.start();
+    
+    // Ensure previous AI summary is removed
+    const oldSummary = document.querySelector('.final-ai-summary');
+    if (oldSummary) oldSummary.remove();
     
     const scoresList = document.getElementById('final-scores-list');
     scoresList.innerHTML = "";
