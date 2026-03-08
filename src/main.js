@@ -595,7 +595,7 @@ function handleMatchStateChange(roomData) {
 }
 
 async function startNextRound() {
-    if (appState.currentRound === 3 && !appState.hasBonusPlayed) {
+    if (appState.currentRound === 3 && !appState.hasBonusPlayed && appState.gameMode !== "batalla") {
         appState.hasBonusPlayed = true;
         const bonusWords = [getRandomWord(), getRandomWord(), getRandomWord(), getRandomWord(), getRandomWord(), getRandomWord()];
         await updateMatchStatus(appState.roomId, "bonus", { bonusWords });
@@ -1041,7 +1041,7 @@ function enterBattleScreen(roomData) {
 }
 
 async function enterBattleGradingScreen(roomData) {
-    showScreen('battle-screen');
+    showScreen('battle');
     document.getElementById('battle-waiting-overlay').classList.remove('hidden');
     document.getElementById('battle-waiting-overlay').querySelector('p').innerText = "La IA está evaluando el ataque...";
 
@@ -1107,7 +1107,7 @@ async function playBattleResultsAnimation(roomData) {
     };
     
     const animAttack = async (attacker, defender, damage, maxHpDef, hpTrackerDef, attackerName, feedback) => {
-        dialog.innerText = `¡${attackerName} ataca! (Puntos: ${damage})`;
+        dialog.innerText = `¡${attackerName} ataca! (Puntos: ${damage})\n${feedback ? feedback : ''}`;
         
         const isMeAtt = attacker.id === appState.userId;
         const attContainer = document.getElementById(isMeAtt ? 'my-pet-visual' : 'opp-pet-visual');
@@ -1135,7 +1135,7 @@ async function playBattleResultsAnimation(roomData) {
         const newHp = Math.max(0, hpTrackerDef - damage);
         updateHpBar(defender.slot, newHp, maxHpDef);
         
-        await new Promise(r => setTimeout(r, 2500)); // Longer pause to read feedback
+        await new Promise(r => setTimeout(r, 2000)); // 2 seconds to read feedback
         return newHp;
     };
 
