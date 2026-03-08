@@ -19,16 +19,16 @@ export function setupFirebase() {
     db = getDatabase(app);
 }
 
-export async function createOrJoinLobby(username, waitTime, playersCount, onMatchFound) {
+export async function createOrJoinLobby(username, waitTime, playersCount, gameMode, activePet, onMatchFound) {
   const userId = `user_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-  const lobbyKey = `lobby_${playersCount}`;
+  const lobbyKey = `lobby_${gameMode}_${playersCount}`;
   const lobbyRef = ref(db, lobbyKey);
   
   const lobbySnap = await get(lobbyRef);
   let waitingPlayers = lobbySnap.exists() ? lobbySnap.val() : {};
   
   // Add myself to waiting list
-  waitingPlayers[userId] = { username };
+  waitingPlayers[userId] = { username, activePet };
   await set(lobbyRef, waitingPlayers);
   onDisconnect(ref(db, `${lobbyKey}/${userId}`)).remove();
 
@@ -40,7 +40,8 @@ export async function createOrJoinLobby(username, waitTime, playersCount, onMatc
       playersData[`player${index + 1}`] = { 
         id: id, 
         name: waitingPlayers[id].username, 
-        score: 0, text: "", evalScore: 0, feedback: "" 
+        activePet: waitingPlayers[id].activePet,
+        score: 0, text: "", evalScore: 0, feedback: "", hp: waitingPlayers[id].activePet ? waitingPlayers[id].activePet.hp : 100
       };
     });
 
@@ -55,6 +56,7 @@ export async function createOrJoinLobby(username, waitTime, playersCount, onMatc
     await set(roomRef, {
       ...playersData,
       playersCount,
+      gameMode,
       currentRound: 0,
       status: "starting",
       word: "",
@@ -198,4 +200,28 @@ export async function awardSkillPoints(username, points) {
     const snap = await get(userRef);
     const currentSp = snap.val() || 0;
     await set(userRef, currentSp + points);
+}
+
+export async function updateBattleDamage(roomId, playerSlot, targetSlot, damageToDeal, aiScore, feedback, text, roundNum) {
+    const roomRef = ref(db, `matches/${roomId}`);
+    const snap = await get(roomRef);
+    if (!snap.exists()) return;
+    const room = snap.val();
+    
+    const currentHp = room[targetSlot].hp || 0;
+    const newHp = Math.max(0, currentHp - damageToDeal);
+    
+    const updates = {};
+    updates[`${targetSlot}/hp`] = newHp;
+    updates[`${playerSlot}/evalScore`] = damageToDeal; 
+    updates[`${playerSlot}/text`] = text;
+    updates[`${playerSlot}/feedback`] = feedback;
+    
+    updates[`history/${roundNum}/${playerSlot}`] = {
+       text: text,
+       score: damageToDeal, 
+       feedback: feedback
+    };
+    
+    await update(roomRef, updates);
 }

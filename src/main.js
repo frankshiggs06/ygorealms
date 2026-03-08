@@ -1,4 +1,4 @@
-import { setupFirebase, createOrJoinLobby, listenToMatch, updateMatchStatus, submitText, updateScore, updateWeeklyLeaderboard, getWeeklyLeaderboard, getUserProfile, updateUserProfile, awardSkillPoints } from './firebase.js';
+import { setupFirebase, createOrJoinLobby, listenToMatch, updateMatchStatus, submitText, updateScore, updateBattleDamage, updateWeeklyLeaderboard, getWeeklyLeaderboard, getUserProfile, updateUserProfile, awardSkillPoints } from './firebase.js';
 import { getRandomWord } from './words.js';
 import { evaluateMetaphor, evaluateFinalMatch, evaluateMemoryRound } from './groq.js';
 import { ParticleSystem } from './particles.js';
@@ -200,9 +200,6 @@ loginBtn.addEventListener('click', async () => {
     }
 });
 
-    }
-});
-
 // Simplified PIN cleanup
 document.addEventListener('DOMContentLoaded', () => {
     const pinIn = document.getElementById('pin-input-direct');
@@ -235,7 +232,17 @@ async function checkExistingSession() {
 checkExistingSession();
 
 // -- MENU INTERACTIONS --
-menuPlayBtn.addEventListener('click', async () => {
+const modeSelectionPanel = document.getElementById('mode-selection-panel');
+const modeRetoBtn = document.getElementById('mode-reto-btn');
+const modeBatallaBtn = document.getElementById('mode-batalla-btn');
+
+menuPlayBtn.addEventListener('click', () => {
+    // Toggle the mode selection panel
+    modeSelectionPanel.classList.toggle('hidden');
+});
+
+modeRetoBtn.addEventListener('click', async () => {
+    modeSelectionPanel.classList.add('hidden');
     appState.roundTime = parseInt(waitTimeSelect.value);
     appState.playersCount = parseInt(playerCountSelect.value);
     
@@ -243,7 +250,35 @@ menuPlayBtn.addEventListener('click', async () => {
     showScreen('lobby');
     
     try {
-        const { roomId, userId, isHost } = await createOrJoinLobby(appState.username, appState.roundTime, appState.playersCount, onGameStartRequested);
+        const { roomId, userId, isHost } = await createOrJoinLobby(appState.username, appState.roundTime, appState.playersCount, "reto", null, onGameStartRequested);
+
+        appState.roomId = roomId;
+        appState.userId = userId;
+        appState.isHost = isHost;
+
+        listenToMatch(roomId, handleMatchStateChange);
+    } catch (e) {
+        console.error(e);
+        alert("Error de conexión");
+        showScreen('login');
+    }
+});
+
+modeBatallaBtn.addEventListener('click', async () => {
+    if (!appState.profile.pet) {
+        alert("Necesitas una mascota para jugar el Modo Batalla. ¡Ve a Personaje para elegir una!");
+        return;
+    }
+
+    modeSelectionPanel.classList.add('hidden');
+    appState.roundTime = parseInt(waitTimeSelect.value);
+    appState.playersCount = 2; // Forced to 2 players for battles
+    
+    lobbyUsername.innerText = appState.username + " y " + appState.profile.pet.id;
+    showScreen('lobby');
+    
+    try {
+        const { roomId, userId, isHost } = await createOrJoinLobby(appState.username, appState.roundTime, 2, "batalla", appState.profile.pet, onGameStartRequested);
 
         appState.roomId = roomId;
         appState.userId = userId;
@@ -503,28 +538,37 @@ function handleMatchStateChange(roomData) {
 
         if (roomData.status === "playing") {
             appState.currentWord = roomData.word;
-            enterGameScreen(roomData);
+            if (roomData.gameMode === "batalla") enterBattleScreen(roomData);
+            else enterGameScreen(roomData);
         } else if (roomData.status === "grading") {
-            enterGradingScreen(roomData);
+            if (roomData.gameMode === "batalla") enterBattleGradingScreen(roomData);
+            else enterGradingScreen(roomData);
         } else if (roomData.status === "bonus") {
             enterBonusScreen(roomData);
         } else if (roomData.status === "results") {
-            updateResultsUI(roomData);
-            if (statusChanged) {
-                startResultsCountdown(); 
+            if (roomData.gameMode === "batalla") {
+                if (statusChanged) playBattleResultsAnimation(roomData);
+            } else {
+                updateResultsUI(roomData);
+                if (statusChanged) startResultsCountdown(); 
             }
         } else if (roomData.status === "recap") {
             if (!appState.isRecapShown) {
                 appState.isRecapShown = true;
-                startRecapShow(roomData);
+                if (roomData.gameMode !== "batalla") startRecapShow(roomData);
+                else {
+                    // Skip recap in battle mode, go straight to finished
+                    if(appState.isHost) updateMatchStatus(appState.roomId, "finished");
+                }
             }
         } else if (roomData.status === "finished") {
-            showEndScreen(roomData);
+            if (roomData.gameMode === "batalla") endBattleScreen(roomData);
+            else showEndScreen(roomData);
         } else if (roomData.status === "abandoned") {
             alert("Un jugador se desconectó");
             showScreen('menu');
         }
-    } else if (roomData.status === "results") {
+    } else if (roomData.status === "results" && roomData.gameMode !== "batalla") {
         updateResultsUI(roomData);
     }
 }
@@ -589,14 +633,18 @@ function startTimer(seconds) {
     clearInterval(appState.timerInterval);
     let timeLeft = seconds;
     timerText.innerText = timeLeft;
+    document.getElementById('battle-timer-text').innerText = timeLeft; // Update battle timer too
     timerCircle.classList.remove('danger');
+    document.querySelector('.timer-circle-small').style.borderColor = "var(--primary-color)";
     
     appState.isTimerActive = true;
     appState.timerInterval = setInterval(() => {
         timeLeft--;
         timerText.innerText = timeLeft;
+        document.getElementById('battle-timer-text').innerText = timeLeft;
         if (timeLeft <= 5) {
             timerCircle.classList.add('danger');
+            document.querySelector('.timer-circle-small').style.borderColor = "var(--error)";
         }
         if (timeLeft <= 0) {
             clearInterval(appState.timerInterval);
@@ -608,8 +656,17 @@ function startTimer(seconds) {
 
 async function finishGameInput() {
     gameInputEl.disabled = true;
-    waitingOverlay.classList.remove('hidden');
-    const myText = gameInputEl.value.trim();
+    const battleInputEl = document.getElementById('battle-input');
+    battleInputEl.disabled = true;
+
+    // Check which input to read depending on mode
+    let myText = gameInputEl.value.trim();
+    if (!document.getElementById('game-screen').classList.contains('active')) {
+        myText = battleInputEl.value.trim();
+        document.getElementById('battle-waiting-overlay').classList.remove('hidden');
+    } else {
+        waitingOverlay.classList.remove('hidden');
+    }
     
     await submitText(appState.roomId, appState.userId, myText);
     
@@ -902,4 +959,211 @@ async function showEndScreen(roomData) {
     recapSummary.className = 'final-ai-summary';
     recapSummary.innerText = finalFeedback;
     scoresList.after(recapSummary);
+}
+
+// BATTLE MODE FUNCTIONS
+function getHpColor(percent) {
+    if (percent > 50) return '#4caf50';
+    if (percent > 20) return '#ffeb3b';
+    return '#f44336';
+}
+
+function enterBattleScreen(roomData) {
+    showScreen('battle-screen');
+    particles.stop();
+    appState.isRecapShown = false; 
+    document.getElementById('battle-waiting-overlay').classList.add('hidden');
+    document.querySelector('.battle-input-area').style.display = 'flex';
+    document.getElementById('battle-dialog-text').innerText = "¿Qué figura literaria utilizarás?";
+    
+    document.getElementById('battle-round').innerText = `Ronda ${appState.currentRound}`;
+    document.getElementById('battle-word').innerText = `Palabra: ${appState.currentWord}`;
+    
+    const myPlayer = appState.players.find(p => p.id === appState.userId);
+    const oppPlayer = appState.players.find(p => p.id !== appState.userId);
+    
+    const myPet = myPlayer.activePet || { id: "pet1", hp: 100 };
+    const oppPet = oppPlayer.activePet || { id: "pet1", hp: 100 };
+    
+    const myPetDef = PETS_DATA.find(p => p.id === myPet.id) || PETS_DATA[0];
+    const oppPetDef = PETS_DATA.find(p => p.id === oppPet.id) || PETS_DATA[0];
+    
+    document.getElementById('player-pet-name').innerText = myPlayer.name;
+    document.getElementById('player-pet-svg').innerHTML = myPetDef.svg;
+    const myHpPercent = Math.max(0, (roomData[myPlayer.slot].hp / myPetDef.hp) * 100);
+    document.getElementById('player-hp-fill').style.width = `${myHpPercent}%`;
+    document.getElementById('player-hp-fill').style.backgroundColor = getHpColor(myHpPercent);
+
+    document.getElementById('opp-pet-name').innerText = oppPlayer.name;
+    document.getElementById('opp-pet-svg').innerHTML = oppPetDef.svg;
+    const oppHpPercent = Math.max(0, (roomData[oppPlayer.slot].hp / oppPetDef.hp) * 100);
+    document.getElementById('opp-hp-fill').style.width = `${oppHpPercent}%`;
+    document.getElementById('opp-hp-fill').style.backgroundColor = getHpColor(oppHpPercent);
+    
+    const battleInputEl = document.getElementById('battle-input');
+    battleInputEl.value = "";
+    battleInputEl.disabled = false;
+    battleInputEl.focus();
+    
+    if (!appState.isTimerActive) {
+        startTimer(appState.roundTime);
+    }
+}
+
+async function enterBattleGradingScreen(roomData) {
+    showScreen('battle-screen');
+    document.getElementById('battle-waiting-overlay').classList.remove('hidden');
+    document.getElementById('battle-waiting-overlay').querySelector('p').innerText = "La IA está evaluando el ataque...";
+
+    const myPlayer = appState.players.find(p => p.id === appState.userId);
+    const oppPlayer = appState.players.find(p => p.id !== appState.userId);
+    const mySlot = myPlayer.slot;
+    const oppSlot = oppPlayer.slot;
+    const word = roomData.word;
+    let myText = roomData[mySlot].text;
+    
+    if (!myText || myText.trim() === "") {
+        myText = document.getElementById('battle-input').value.trim();
+    }
+    
+    const aiResult = await evaluateMetaphor(word, myText);
+    
+    const myPetDef = PETS_DATA.find(p => p.id === (myPlayer.activePet?.id || "pet1")) || PETS_DATA[0];
+    const oppPetDef = PETS_DATA.find(p => p.id === (oppPlayer.activePet?.id || "pet1")) || PETS_DATA[0];
+    
+    let damageToDeal = Math.floor((aiResult.score * 10 * myPetDef.atk) / oppPetDef.def);
+    if (isNaN(damageToDeal)) damageToDeal = 0;
+    
+    await updateBattleDamage(appState.roomId, mySlot, oppSlot, damageToDeal, aiResult.score, aiResult.feedback, myText, appState.currentRound);
+    
+    if (appState.isHost) {
+        setTimeout(async () => {
+            await updateMatchStatus(appState.roomId, "results");
+        }, 8000); 
+    }
+}
+
+async function playBattleResultsAnimation(roomData) {
+    showScreen('battle-screen');
+    document.getElementById('battle-waiting-overlay').classList.add('hidden');
+    document.querySelector('.battle-input-area').style.display = 'none';
+    const dialog = document.getElementById('battle-dialog-text');
+    
+    const p1 = roomData["player1"];
+    const p2 = roomData["player2"];
+    
+    const petDefP1 = PETS_DATA.find(p => p.id === (p1.activePet?.id || "pet1")) || PETS_DATA[0];
+    const petDefP2 = PETS_DATA.find(p => p.id === (p2.activePet?.id || "pet1")) || PETS_DATA[0];
+    
+    const maxHpP1 = petDefP1.hp;
+    const maxHpP2 = petDefP2.hp;
+
+    // We have to calculate the intermediate HP steps since roomData has the final resolved HP.
+    // HP before P2's attack = final HP + P2's damage dealt
+    let p1HpTracker = p1.hp + (p2.evalScore || 0);
+    let p2HpTracker = p2.hp + (p1.evalScore || 0);
+
+    const updateHpBar = (slot, currentHp, maxHp) => {
+        const percent = Math.max(0, (currentHp / maxHp) * 100);
+        const isMe = roomData[slot].id === appState.userId;
+        const fillId = isMe ? 'player-hp-fill' : 'opp-hp-fill';
+        document.getElementById(fillId).style.width = `${percent}%`;
+        document.getElementById(fillId).style.backgroundColor = getHpColor(percent);
+    };
+    
+    const animAttack = async (attacker, defender, damage, maxHpDef, hpTrackerDef, attackerName) => {
+        dialog.innerText = `¡${attackerName} ataca! (Daño: ${damage})`;
+        
+        const isMeAtt = attacker.id === appState.userId;
+        const attContainer = document.getElementById(isMeAtt ? 'player-pet-container' : 'opp-pet-container');
+        const defContainer = document.getElementById(!isMeAtt ? 'player-pet-container' : 'opp-pet-container');
+        
+        // Attack bump
+        attContainer.style.transform = isMeAtt ? "translate(30px, -30px)" : "translate(-30px, 30px)";
+        await new Promise(r => setTimeout(r, 300));
+        attContainer.style.transform = "translate(0, 0)";
+        
+        // Damage blink
+        defContainer.classList.add('damage-blink');
+        setTimeout(() => defContainer.classList.remove('damage-blink'), 500);
+        
+        let newHp = Math.max(0, hpTrackerDef - damage);
+        updateHpBar(defender.id === roomData["player1"].id ? "player1" : "player2", newHp, maxHpDef);
+        await new Promise(r => setTimeout(r, 1500));
+        return newHp;
+    };
+
+    // P1 Attacks P2
+    p2HpTracker = await animAttack(p1, p2, (p1.evalScore || 0), maxHpP2, p2HpTracker, p1.name);
+    
+    // P2 Attacks P1 (only if P2 is still alive, but since damage is simultaneous, we play it anyway)
+    p1HpTracker = await animAttack(p2, p1, (p2.evalScore || 0), maxHpP1, p1HpTracker, p2.name);
+
+    if (appState.isHost) {
+        if (p1HpTracker <= 0 || p2HpTracker <= 0 || appState.currentRound >= 5) {
+            setTimeout(() => { updateMatchStatus(appState.roomId, "finished"); }, 2000);
+        } else {
+            startNextRound();
+        }
+    }
+}
+
+async function endBattleScreen(roomData) {
+    showScreen('end');
+    particles.start();
+    
+    const oldSummary = document.querySelector('.final-ai-summary');
+    if (oldSummary) oldSummary.remove();
+    
+    // Determine winner based on remaining HP percentage
+    const p1 = roomData["player1"];
+    const p2 = roomData["player2"];
+    const def1 = PETS_DATA.find(p => p.id === (p1.activePet?.id || "pet1")) || PETS_DATA[0];
+    const def2 = PETS_DATA.find(p => p.id === (p2.activePet?.id || "pet1")) || PETS_DATA[0];
+    
+    const hpPct1 = Math.max(0, p1.hp / def1.hp);
+    const hpPct2 = Math.max(0, p2.hp / def2.hp);
+    
+    let winnerId = null;
+    if (hpPct1 > hpPct2) winnerId = p1.id;
+    else if (hpPct2 > hpPct1) winnerId = p2.id;
+    // Tie handles as player1 wins theoretically, or no winner.
+    
+    const isWinner = winnerId === appState.userId;
+    
+    // SP Rewards
+    const spReward = isWinner ? 200 : 30;
+    
+    const scoresList = document.getElementById('final-scores-list');
+    scoresList.innerHTML = `<div class="score-row"><span style="color:${isWinner ? '#4caf50' : '#f44336'}; font-size:1.5rem; text-align:center; width:100%;">${isWinner ? '¡VICTORIA!' : 'DERROTA'}</span></div>
+    <div class="score-row"><span style="text-align:center; width:100%;">Recompensa: +${spReward} SP</span></div>`;
+
+    // Modify pet stats if lost
+    if (!isWinner && appState.profile.pet) {
+        appState.profile.pet.hunger = Math.max(10, appState.profile.pet.hunger - 50);
+        appState.profile.pet.thirst = Math.max(10, appState.profile.pet.thirst - 50);
+        appState.profile.pet.health = Math.max(10, appState.profile.pet.health - 50);
+        
+        scoresList.innerHTML += `<div class="score-row"><span style="color:#f44336; font-size:0.8rem; text-align:center; width:100%;">Tu mascota ha quedado exhausta...</span></div>`;
+    }
+
+    appState.profile.skillPoints += spReward;
+    
+    await updateUserProfile(appState.username, {
+        skillPoints: appState.profile.skillPoints,
+        pet: appState.profile.pet
+    });
+
+    const backBtn = document.getElementById('back-to-lobby-btn');
+    backBtn.onclick = () => {
+        appState.roomId = null;
+        appState.userId = null;
+        appState.isHost = false;
+        appState.players = [];
+        appState.currentRound = 0;
+        appState.lastStatus = "";
+        appState.lastRound = 0;
+        appState.isTimerActive = false;
+        showScreen('menu');
+    };
 }
