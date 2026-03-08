@@ -1033,32 +1033,46 @@ textarea {
 }
 
 /* PIN Styles */
-.pin-inputs {
+.pin-container {
     display: flex;
     justify-content: center;
-    gap: 10px;
+    gap: 15px;
     margin-bottom: 0.5rem;
+    cursor: pointer;
+    position: relative;
+    padding: 5px;
 }
 
-.pin-inputs input {
-    width: 45px;
-    height: 55px;
-    text-align: center;
-    font-size: 1.5rem;
-    font-weight: bold;
+.pin-digit {
+    width: 50px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+    font-weight: 900;
+    color: var(--secondary-color);
     background: rgba(255, 255, 255, 0.05);
     border: 2px solid rgba(255, 255, 255, 0.1);
     border-radius: 12px;
-    color: var(--secondary-color);
     transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-.pin-inputs input:focus {
-    outline: none;
-    border-color: var(--primary-color);
-    background: rgba(124, 58, 237, 0.1);
-    transform: scale(1.1);
-    box-shadow: 0 0 15px rgba(124, 58, 237, 0.3);
+/* Simulated focus when the hidden input is active */
+.pin-container.focused .pin-digit:empty::after {
+    content: '';
+    width: 2px;
+    height: 60%;
+    background: var(--primary-color);
+    animation: blink 1s step-end infinite;
+}
+
+.pin-container.focused .pin-digit {
+    border-color: rgba(124, 58, 237, 0.4);
+}
+
+@keyframes blink {
+    50% { opacity: 0; }
 }
 
 .sp-earned-badge {
