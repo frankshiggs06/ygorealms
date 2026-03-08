@@ -240,6 +240,11 @@ async function checkExistingSession() {
     if (savedUser) {
         try {
             const profile = await getUserProfile(savedUser);
+            
+            // Backwards compatibility for early accounts
+            if (!profile.equipment) profile.equipment = { head: null, chest: null, hands: null, feet: null, weapon: null };
+            if (!profile.consumables) profile.consumables = [];
+            
             appState.profile = profile;
             appState.username = savedUser;
             const spEl = document.getElementById('navbar-sp');
@@ -805,6 +810,9 @@ function handleMatchStateChange(roomData) {
             if(appState.profile) appState.profile.skillPoints += 50; // Sync local balance
             
             // Full state reset to prevent phantom matches
+            clearInterval(appState.timerInterval);
+            if (appState.resultsTimer) clearInterval(appState.resultsTimer);
+            
             appState.roomId = null;
             appState.userId = null;
             appState.isHost = false;
@@ -1045,14 +1053,14 @@ function startResultsCountdown() {
         finishBtn.classList.add('hidden');
         let cd = 7; 
         timerSpan.innerText = cd;
-        const int = setInterval(() => {
+        appState.resultsTimer = setInterval(() => {
             cd--;
             timerSpan.innerText = cd;
             if (cd <= 0) {
-                clearInterval(int);
+                clearInterval(appState.resultsTimer);
                 if(appState.isHost) startNextRound();
             }
-            if (appState.lastStatus !== "results") clearInterval(int);
+            if (appState.lastStatus !== "results") clearInterval(appState.resultsTimer);
         }, 1000);
     } else {
         countdownPanel.classList.add('hidden');
@@ -1233,10 +1241,11 @@ function enterBattleScreen(roomData) {
     appState.activeBuffs = { atkMulti: 1.0, iaBonus: 0, shield: false, enemyDefMinus: 0, dmgFlatRed: 0 };
     
     // Render Consumables
+    const myConsumables = appState.profile.consumables || [];
     for (let i = 1; i <= 3; i++) {
         const btn = document.getElementById(`battle-cons-${i}`);
         if (!btn) continue;
-        const consId = appState.profile.consumables[i-1];
+        const consId = myConsumables[i-1];
         if (consId) {
             const consDef = CONSUMABLES_DATA.find(c => c.id === consId);
             if (consDef) {
