@@ -126,9 +126,7 @@ loginBtn.addEventListener('click', async () => {
                 appState._tempProfile = profile;
             }
             
-            // Focus hidden input
-            document.getElementById('pin-hidden-input').focus();
-            document.getElementById('pin-display-container').classList.add('focused');
+            document.getElementById('pin-input-direct').focus();
             usernameInput.disabled = true; // Lock username
         } catch(err) {
             console.error(err);
@@ -138,7 +136,7 @@ loginBtn.addEventListener('click', async () => {
         }
     } else {
         // Step 2: Handle PIN entry
-        const pin = document.getElementById('pin-hidden-input').value;
+        const pin = document.getElementById('pin-input-direct').value;
         
         if (pin.length < 4) {
             loginError.innerText = "PIN incompleto";
@@ -174,10 +172,9 @@ loginBtn.addEventListener('click', async () => {
                     loginError.innerText = "PIN incorrecto";
                     loginBtn.innerText = "Entrar";
                     loginBtn.disabled = false;
-                    // Clear pins
-                    document.getElementById('pin-hidden-input').value = "";
-                    updatePinDisplay();
-                    document.getElementById('pin-hidden-input').focus();
+                    // Clear pin
+                    document.getElementById('pin-input-direct').value = "";
+                    document.getElementById('pin-input-direct').focus();
                     return;
                 }
                 appState.profile = p;
@@ -203,34 +200,18 @@ loginBtn.addEventListener('click', async () => {
     }
 });
 
-// -- MOBILE PIN LOGIC (One hidden input, 4 displays) --
-const pinHiddenInput = document.getElementById('pin-hidden-input');
-const pinContainer = document.getElementById('pin-display-container');
-const pinDigits = document.querySelectorAll('.pin-digit');
-
-pinContainer.addEventListener('click', () => pinHiddenInput.focus());
-pinHiddenInput.addEventListener('focus', () => pinContainer.classList.add('focused'));
-pinHiddenInput.addEventListener('blur', () => pinContainer.classList.remove('focused'));
-
-pinHiddenInput.addEventListener('input', (e) => {
-    // Only allow numbers
-    e.target.value = e.target.value.replace(/\D/g, '').slice(0, 4);
-    updatePinDisplay();
+    }
 });
 
-function updatePinDisplay() {
-    const val = pinHiddenInput.value;
-    pinDigits.forEach((el, idx) => {
-        el.innerText = val[idx] || "";
-        if (val[idx]) {
-            el.style.borderColor = "var(--primary-color)";
-            el.style.transform = "scale(1.05)";
-        } else {
-            el.style.borderColor = "rgba(255,255,255,0.1)";
-            el.style.transform = "scale(1)";
-        }
-    });
-}
+// Simplified PIN cleanup
+document.addEventListener('DOMContentLoaded', () => {
+    const pinIn = document.getElementById('pin-input-direct');
+    if (pinIn) {
+        pinIn.addEventListener('input', (e) => {
+            e.target.value = e.target.value.replace(/\D/g, '').slice(0, 4);
+        });
+    }
+});
 
 
 // -- RE-LOGIN CHECK --

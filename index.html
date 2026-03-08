@@ -22,13 +22,7 @@
                     
                     <div id="pin-section" class="hidden" style="margin-top: 1rem;">
                         <p id="pin-label" style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.5rem;">Crea tu PIN de 4 dígitos:</p>
-                        <div class="pin-container" id="pin-display-container">
-                            <input type="tel" id="pin-hidden-input" maxlength="4" pattern="\d*" inputmode="numeric" style="position: absolute; opacity: 0; pointer-events: none; width: 0; height:0;">
-                            <div class="pin-digit" data-index="0"></div>
-                            <div class="pin-digit" data-index="1"></div>
-                            <div class="pin-digit" data-index="2"></div>
-                            <div class="pin-digit" data-index="3"></div>
-                        </div>
+                        <input type="password" id="pin-input-direct" maxlength="4" pattern="\d*" inputmode="numeric" placeholder="****" style="text-align: center; font-size: 2rem; letter-spacing: 1rem; font-weight: 900; color: var(--secondary-color);">
                     </div>
 
                     <button id="login-btn" class="primary-btn" style="margin-top: 1.5rem;">Entrar</button>
