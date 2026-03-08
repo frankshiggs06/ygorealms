@@ -952,11 +952,11 @@ async function showEndScreen(roomData) {
     // Skill Points calculation
     let earnedSp = 0;
     if (appState.playersCount === 2) {
-        earnedSp = (appState.userId === winner.id) ? 30 : 5;
+        earnedSp = (appState.userId === winner.id) ? 300 : 5;
     } else {
         const myRank = sortedPlayers.findIndex(p => p.id === appState.userId);
-        if (myRank === 0) earnedSp = 50;
-        else if (myRank === 1) earnedSp = 10;
+        if (myRank === 0) earnedSp = 300;
+        else if (myRank === 1) earnedSp = 50;
         else earnedSp = 0;
     }
 
@@ -1189,7 +1189,7 @@ async function endBattleScreen(roomData) {
     const isWinner = winnerId === appState.userId;
     
     // SP Rewards
-    const spReward = isWinner ? 30 : 5;
+    const spReward = isWinner ? 300 : 5;
     
     const scoresList = document.getElementById('final-scores-list');
     scoresList.innerHTML = `<div class="score-row"><span style="color:${isWinner ? '#4caf50' : '#f44336'}; font-size:1.5rem; text-align:center; width:100%;">${isWinner ? '¡VICTORIA!' : 'DERROTA'}</span></div>
