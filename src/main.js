@@ -1017,14 +1017,18 @@ function enterBattleScreen(roomData) {
     document.getElementById('my-pet-name').innerText = myPlayer.name;
     document.getElementById('my-pet-visual').innerHTML = myPetDef.svg;
     const myHpPercent = Math.max(0, (roomData[myPlayer.slot].hp / myPetDef.hp) * 100);
+    const myHp = Math.ceil(roomData[myPlayer.slot].hp);
     document.getElementById('my-hp-fill').style.width = `${myHpPercent}%`;
     document.getElementById('my-hp-fill').style.backgroundColor = getHpColor(myHpPercent);
+    document.getElementById('my-hp-text').innerText = `${myHp}/${myPetDef.hp}`;
 
     document.getElementById('opp-pet-name').innerText = oppPlayer.name;
     document.getElementById('opp-pet-visual').innerHTML = oppPetDef.svg;
     const oppHpPercent = Math.max(0, (roomData[oppPlayer.slot].hp / oppPetDef.hp) * 100);
+    const oppHp = Math.ceil(roomData[oppPlayer.slot].hp);
     document.getElementById('opp-hp-fill').style.width = `${oppHpPercent}%`;
     document.getElementById('opp-hp-fill').style.backgroundColor = getHpColor(oppHpPercent);
+    document.getElementById('opp-hp-text').innerText = `${oppHp}/${oppPetDef.hp}`;
     
     const battleInputEl = document.getElementById('battle-input');
     battleInputEl.value = "";
@@ -1057,8 +1061,10 @@ async function enterBattleGradingScreen(roomData) {
     const myPetDef = PETS_DATA.find(p => p.id === (myPlayer.activePet?.id || "pet1")) || PETS_DATA[0];
     const oppPetDef = PETS_DATA.find(p => p.id === (oppPlayer.activePet?.id || "pet1")) || PETS_DATA[0];
     
-    let damageToDeal = Math.floor((aiResult.score * 10 * myPetDef.atk) / oppPetDef.def);
+    // Damage is now directly the score (1-10) as requested
+    let damageToDeal = Math.floor(aiResult.score);
     if (isNaN(damageToDeal)) damageToDeal = 0;
+
     
     await updateBattleDamage(appState.roomId, mySlot, oppSlot, damageToDeal, aiResult.score, aiResult.feedback, myText, appState.currentRound);
     
@@ -1093,8 +1099,11 @@ async function playBattleResultsAnimation(roomData) {
         const percent = Math.max(0, (currentHp / maxHp) * 100);
         const isMe = roomData[slot].id === appState.userId;
         const fillId = isMe ? 'my-hp-fill' : 'opp-hp-fill';
+        const textId = isMe ? 'my-hp-text' : 'opp-hp-text';
+        
         document.getElementById(fillId).style.width = `${percent}%`;
         document.getElementById(fillId).style.backgroundColor = getHpColor(percent);
+        document.getElementById(textId).innerText = `${Math.ceil(currentHp)}/${maxHp}`;
     };
     
     const animAttack = async (attacker, defender, damage, maxHpDef, hpTrackerDef, attackerName, feedback) => {
