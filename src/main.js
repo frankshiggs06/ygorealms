@@ -293,6 +293,12 @@ modeBatallaBtn.addEventListener('click', async () => {
         alert("Necesitas una mascota para jugar el Modo Batalla. ¡Ve a Personaje para elegir una!");
         return;
     }
+    
+    const stats = calculatePetStats(appState.profile.pet);
+    if (stats.health <= 0) {
+        alert("Tu mascota está exhausta (Salud: 0). Dale medicina o comida desde el inventario antes de combatir.");
+        return;
+    }
 
     modeSelectionPanel.classList.add('hidden');
     appState.roundTime = parseInt(waitTimeSelect.value);
@@ -796,6 +802,20 @@ function handleMatchStateChange(roomData) {
             cancelDisconnectHook();
             alert("Un jugador se desconectó. Has ganado la partida por abandono.\n¡Recibes 50 SP extra!");
             awardSkillPoints(appState.username, 50);
+            if(appState.profile) appState.profile.skillPoints += 50; // Sync local balance
+            
+            // Full state reset to prevent phantom matches
+            appState.roomId = null;
+            appState.userId = null;
+            appState.isHost = false;
+            appState.players = [];
+            appState.currentRound = 0;
+            appState.lastStatus = "";
+            appState.lastRound = 0;
+            appState.isTimerActive = false;
+            appState.isRecapShown = false;
+            appState.hasBonusPlayed = false;
+            
             showScreen('menu');
         }
     } else if (roomData.status === "results" && roomData.gameMode !== "batalla") {
@@ -1241,7 +1261,7 @@ function enterBattleScreen(roomData) {
     const roundEl = document.getElementById('battle-round');
     if (roundEl) roundEl.innerText = `Ronda ${appState.currentRound}`;
     const wordEl = document.getElementById('battle-current-word');
-    if (wordEl) wordEl.innerText = `Palabra: ${appState.currentWord}`;
+    if (wordEl) wordEl.innerText = `${appState.currentWord}`;
     
     const myPlayer = appState.players.find(p => p.id === appState.userId);
     const oppPlayer = appState.players.find(p => p.id !== appState.userId);
