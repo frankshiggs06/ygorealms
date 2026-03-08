@@ -59,8 +59,8 @@
                 <div class="menu-options">                    <button id="menu-play-btn" class="primary-btn">INICIAR PARTIDA</button>
                     
                     <!-- Mode Selection Sub-Menu (Hidden by default) -->
-                    <div id="mode-selection-panel" class="hidden" style="background: rgba(0,0,0,0.8); border: 2px solid var(--primary-color); border-radius: 20px; padding: 1.5rem; text-align: center; margin-top: 1rem; backdrop-filter: blur(10px);">
-                        <h3 style="color: var(--text-main); margin-bottom: 1rem;">CONFIGURACIÓN Y MODO</h3>
+                    <div id="mode-selection-panel" class="hidden glass-panel" style="padding: 1.5rem; text-align: center; margin-top: 1rem; animation: epic-reveal 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
+                        <h3 style="color: var(--text-main); margin-bottom: 1rem; text-shadow: 0 0 10px rgba(255,255,255,0.3);">CONFIGURACIÓN Y MODO</h3>
                         
                         <div class="settings-group" style="text-align: left; margin-bottom: 0.8rem;">
                             <label for="player-count-select">Cantidad de jugadores:</label>
@@ -99,7 +99,7 @@
             <div class="glow-bg"></div>
             <div class="content">
                 <h2 class="epic-title" style="margin-bottom: 2rem;">RANKING SEMANAL</h2>
-                <div id="leaderboard-list" class="leaderboard-container">
+                <div id="leaderboard-list" class="leaderboard-container glass-panel">
                     <!-- Items injected via JS -->
                 </div>
                 <button id="leaderboard-back-btn" class="secondary-btn" style="margin-top: 2rem;">VOLVER AL MENÚ</button>
@@ -114,7 +114,7 @@
                 <button id="logout-btn" class="icon-btn" onclick="location.reload()">🚪</button>
             </div>
             <div class="content lobby-content">
-                <div class="status-card" id="lobby-status-card">
+                <div class="status-card glass-panel" id="lobby-status-card">
                     <div class="status-card-content">
                         <h2 id="match-status">Buscando oponente...</h2>
                         <div class="spinner"></div>
@@ -138,10 +138,10 @@
                     <span id="timer-text">30</span>
                 </div>
             </div>
-            <div class="word-card">
+            <div class="word-card glass-panel">
                 <h2 id="current-word">PALABRA</h2>
             </div>
-            <div class="input-area">
+            <div class="input-area glass-panel">
                 <textarea id="game-input" placeholder="Escribe tu figura literaria aquí..." disabled></textarea>
                 <div class="word-count"><span id="word-count">0</span> / 15 palabras</div>
             </div>
@@ -155,7 +155,7 @@
         <section id="battle-screen" class="screen hidden" style="padding: 0;">
             <div class="battle-arena">
                 <!-- Opponent Top Right -->
-                <div class="battle-hud hud-opponent">
+                <div class="battle-hud hud-opponent glass-panel" style="backdrop-filter: blur(5px);">
                     <div class="hud-info">
                         <span id="opp-pet-name">Rival</span>
                         <span id="battle-round" class="hud-lvl">Ronda 1</span>
@@ -174,7 +174,7 @@
                 <div id="my-pet-visual" class="battle-pet-visual pos-bot-left">
                     <!-- SVG Injected -->
                 </div>
-                <div class="battle-hud hud-player">
+                <div class="battle-hud hud-player glass-panel" style="backdrop-filter: blur(5px);">
                     <div class="hud-info">
                         <span id="my-pet-name">Tú</span>
                         <span class="hud-lvl">Lv.1</span>
@@ -195,7 +195,7 @@
                 </div>
                 
                 <!-- Battle Text/Input Box at bottom -->
-                <div class="battle-dialog-box">
+                <div class="battle-dialog-box glass-panel">
                     <div class="timer-container-small">
                         <div class="timer-circle-small"><span id="battle-timer-text">30</span></div>
                     </div>
@@ -224,11 +224,11 @@
             <div class="content">
                 <h2 id="bonus-title" class="bonus-round-title">RONDA BONUS: MEMORIA</h2>
                 
-                <div id="bonus-word-display" class="bonus-word-box hidden">
+                <div id="bonus-word-display" class="bonus-word-box hidden glass-panel">
                     <span id="bonus-current-word">---</span>
                 </div>
 
-                <div id="bonus-input-panel" class="bonus-inputs hidden">
+                <div id="bonus-input-panel" class="bonus-inputs hidden glass-panel">
                     <p class="bonus-instruction">¡Escribe las palabras en orden!</p>
                     <div class="bonus-slots">
                         <input type="text" id="bonus-in-1" placeholder="1ra palabra" autocomplete="off">

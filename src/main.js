@@ -399,7 +399,7 @@ function renderShop() {
         
         const canAfford = appState.profile.skillPoints >= finalPrice;
         const div = document.createElement('div');
-        div.className = 'shop-item-card';
+        div.className = 'shop-item-card glass-panel';
         div.innerHTML = `
             <div class="shop-icon" style="font-size: 2rem;">${icon}</div>
             <div class="shop-name">${item.name}</div>
@@ -470,7 +470,7 @@ function renderPetScreen() {
         grid.innerHTML = "";
         PETS_DATA.forEach(petDef => {
             const div = document.createElement('div');
-            div.className = 'shop-item-card';
+            div.className = 'shop-item-card glass-panel';
             div.style.cursor = 'pointer';
             div.innerHTML = `
                 <div style="width:60px; height:60px;">${petDef.svg}</div>
