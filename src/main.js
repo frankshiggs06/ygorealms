@@ -112,6 +112,7 @@ loginBtn.addEventListener('click', async () => {
         if(spEl) spEl.innerText = profile.skillPoints;
 
         menuWelcomeText.innerText = `Bienvenido, ${username}`;
+        sessionStorage.setItem('rhymestrain_user', username);
         showScreen('menu');
         particles.start();
     } catch(err) {
@@ -122,6 +123,26 @@ loginBtn.addEventListener('click', async () => {
         loginBtn.disabled = false;
     }
 });
+
+// -- RE-LOGIN CHECK --
+async function checkExistingSession() {
+    const savedUser = sessionStorage.getItem('rhymestrain_user');
+    if (savedUser) {
+        try {
+            const profile = await getUserProfile(savedUser);
+            appState.profile = profile;
+            appState.username = savedUser;
+            const spEl = document.getElementById('navbar-sp');
+            if(spEl) spEl.innerText = profile.skillPoints;
+            menuWelcomeText.innerText = `Bienvenido, ${savedUser}`;
+            showScreen('menu');
+            particles.start();
+        } catch(e) {
+            console.error("Session restoration failed", e);
+        }
+    }
+}
+checkExistingSession();
 
 // -- MENU INTERACTIONS --
 menuPlayBtn.addEventListener('click', async () => {
@@ -411,7 +432,7 @@ function handleMatchStateChange(roomData) {
             showEndScreen(roomData);
         } else if (roomData.status === "abandoned") {
             alert("Un jugador se desconectó");
-            location.reload();
+            showScreen('menu');
         }
     } else if (roomData.status === "results") {
         updateResultsUI(roomData);
@@ -728,6 +749,25 @@ async function showEndScreen(roomData) {
         `;
         scoresList.appendChild(row);
     });
+
+    // We no longer rely on location.reload for the back button
+    const backBtn = document.getElementById('back-to-lobby-btn');
+    backBtn.onclick = null; // Remove the location.reload
+    backBtn.onclick = () => {
+        // Reset app state for next match while keeping profile
+        appState.roomId = null;
+        appState.userId = null;
+        appState.isHost = false;
+        appState.players = [];
+        appState.currentRound = 0;
+        appState.lastStatus = "";
+        appState.lastRound = 0;
+        appState.isTimerActive = false;
+        appState.isRecapShown = false;
+        appState.hasBonusPlayed = false;
+        
+        showScreen('menu');
+    };
 
     await updateWeeklyLeaderboard(appState.username, appState.myScore);
     
