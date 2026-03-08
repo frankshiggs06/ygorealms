@@ -89,6 +89,12 @@ function showScreen(screenKey) {
         s.classList.add('active');
     }
   });
+  
+  // Dynamically update the main menu SP whenever it comes into view
+  if (screenKey === 'menu' && appState && appState.profile) {
+      const spEl = document.getElementById('navbar-sp');
+      if (spEl) spEl.innerText = appState.profile.skillPoints;
+  }
 }
 
 // 1. INIT / LOGIN
