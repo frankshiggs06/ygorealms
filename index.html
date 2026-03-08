@@ -41,28 +41,29 @@
             <div class="content">
                 <h1 class="logo">RHYME<br>STRAIN</h1>
                 <p class="subtitle" id="menu-welcome-text">Bienvenido, MC</p>
-                <div class="menu-options">
-                    <div class="settings-group" style="text-align: left; margin-bottom: 0.5rem;">
-                        <label for="player-count-select">Modalidad de partida:</label>
-                        <select id="player-count-select">
-                            <option value="2">Duelo (2 Jugadores)</option>
-                            <option value="3">Batalla Triple (3 Jugadores)</option>
-                        </select>
-                    </div>
-                    <div class="settings-group" style="text-align: left; margin-bottom: 0.5rem;">
-                        <label for="wait-time-select">Tiempo de cada ronda:</label>
-                        <select id="wait-time-select">
-                            <option value="5">5 segundos</option>
-                            <option value="10">10 segundos</option>
-                            <option value="15">15 segundos</option>
-                            <option value="30" selected>30 segundos</option>
-                        </select>
-                    </div>
-                    <button id="menu-play-btn" class="primary-btn">INICIAR PARTIDA</button>
+                <div class="menu-options">                    <button id="menu-play-btn" class="primary-btn">INICIAR PARTIDA</button>
                     
                     <!-- Mode Selection Sub-Menu (Hidden by default) -->
                     <div id="mode-selection-panel" class="hidden" style="background: rgba(0,0,0,0.8); border: 2px solid var(--primary-color); border-radius: 20px; padding: 1.5rem; text-align: center; margin-top: 1rem; backdrop-filter: blur(10px);">
-                        <h3 style="color: var(--text-main); margin-bottom: 1rem;">ELIGE TU CAMINO</h3>
+                        <h3 style="color: var(--text-main); margin-bottom: 1rem;">CONFIGURACIÓN Y MODO</h3>
+                        
+                        <div class="settings-group" style="text-align: left; margin-bottom: 0.8rem;">
+                            <label for="player-count-select">Cantidad de jugadores:</label>
+                            <select id="player-count-select">
+                                <option value="2">2 Jugadores (1v1)</option>
+                                <option value="3">3 Jugadores (Triple)</option>
+                            </select>
+                        </div>
+                        <div class="settings-group" style="text-align: left; margin-bottom: 1rem;">
+                            <label for="wait-time-select">Tiempo de cada ronda:</label>
+                            <select id="wait-time-select">
+                                <option value="10">10 segundos</option>
+                                <option value="15">15 segundos</option>
+                                <option value="30" selected>30 segundos</option>
+                                <option value="45">45 segundos</option>
+                            </select>
+                        </div>
+
                         <div style="display: flex; flex-direction: column; gap: 1rem;">
                             <button id="mode-reto-btn" class="secondary-btn" style="background: rgba(6, 182, 212, 0.1);">MODO RETO (Clásico)</button>
                             <button id="mode-batalla-btn" class="secondary-btn" style="border-color: #ef4444; color: #ef4444; background: rgba(239, 68, 68, 0.1);">MODO BATALLA (Mascotas)</button>
