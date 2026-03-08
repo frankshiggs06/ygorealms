@@ -99,29 +99,126 @@ loginBtn.addEventListener('click', async () => {
         return;
     }
     
-    loginBtn.innerText = "Cargando...";
-    loginBtn.disabled = true;
-
-    try {
-        const profile = await getUserProfile(username);
-        appState.profile = profile;
-        appState.username = username;
+    // Step 1: Check if we are starting or already in PIN mode
+    const pinSection = document.getElementById('pin-section');
+    const isPinVisible = !pinSection.classList.contains('hidden');
+    
+    if (!isPinVisible) {
+        loginBtn.innerText = "Verificando...";
+        loginBtn.disabled = true;
         
-        // Update top-right skill points visually (UI elements will be added in HTML)
-        const spEl = document.getElementById('navbar-sp');
-        if(spEl) spEl.innerText = profile.skillPoints;
+        try {
+            const profile = await getUserProfile(username);
+            loginBtn.disabled = false;
+            loginBtn.innerText = "Entrar";
+            
+            pinSection.classList.remove('hidden');
+            const pinLabel = document.getElementById('pin-label');
+            
+            // If user is new (only base fields) or legacy (no pin property)
+            if (!profile || !profile.pin) {
+                pinLabel.innerText = "Crea tu PIN de 4 dígitos:";
+                appState._loginMode = "setting";
+                appState._tempProfile = profile; 
+            } else {
+                pinLabel.innerText = "Ingresa tu PIN:";
+                appState._loginMode = "verify";
+                appState._tempProfile = profile;
+            }
+            
+            // Focus first pin
+            document.getElementById('pin-1').focus();
+            usernameInput.disabled = true; // Lock username
+        } catch(err) {
+            console.error(err);
+            loginError.innerText = "Error de conexión.";
+            loginBtn.disabled = false;
+            loginBtn.innerText = "Entrar";
+        }
+    } else {
+        // Step 2: Handle PIN entry
+        const pin = [
+            document.getElementById('pin-1').value,
+            document.getElementById('pin-2').value,
+            document.getElementById('pin-3').value,
+            document.getElementById('pin-4').value
+        ].join("");
+        
+        if (pin.length < 4) {
+            loginError.innerText = "PIN incompleto";
+            return;
+        }
 
-        menuWelcomeText.innerText = `Bienvenido, ${username}`;
-        sessionStorage.setItem('rhymestrain_user', username);
-        showScreen('menu');
-        particles.start();
-    } catch(err) {
-        console.error(err);
-        loginError.innerText = "Error cargando perfil.";
-    } finally {
-        loginBtn.innerText = "Entrar";
-        loginBtn.disabled = false;
+        loginBtn.innerText = "Cargando...";
+        loginBtn.disabled = true;
+
+        try {
+            const p = appState._tempProfile;
+            if (appState._loginMode === "setting") {
+                // Update or create with PIN
+                const updates = { pin: pin };
+                if (!p) {
+                    // New user creation (default fields + PIN)
+                    const defaultProfile = {
+                        username: username,
+                        skillPoints: 100,
+                        inventory: { "food1": 0, "food2": 0, "water1": 0, "water2": 0, "health1":0, "acc1": 0, "acc2": 0 },
+                        pet: null,
+                        pin: pin
+                    };
+                    await updateUserProfile(username, defaultProfile);
+                    appState.profile = defaultProfile;
+                } else {
+                    await updateUserProfile(username, updates);
+                    appState.profile = { ...p, ...updates };
+                }
+            } else {
+                // Verification
+                if (p.pin !== pin) {
+                    loginError.innerText = "PIN incorrecto";
+                    loginBtn.innerText = "Entrar";
+                    loginBtn.disabled = false;
+                    // Clear pins
+                    [1,2,3,4].forEach(i => document.getElementById(`pin-${i}`).value = "");
+                    document.getElementById('pin-1').focus();
+                    return;
+                }
+                appState.profile = p;
+            }
+
+            appState.username = username;
+            
+            // UI Sync
+            const spEl = document.getElementById('navbar-sp');
+            if(spEl) spEl.innerText = appState.profile.skillPoints;
+            menuWelcomeText.innerText = `Bienvenido, ${username}`;
+            
+            sessionStorage.setItem('rhymestrain_user', username);
+            showScreen('menu');
+            particles.start();
+        } catch(err) {
+            console.error(err);
+            loginError.innerText = "Error al iniciar sesión.";
+        } finally {
+            loginBtn.innerText = "Entrar";
+            loginBtn.disabled = false;
+        }
     }
+});
+
+// PIN Auto-focus logic
+[1,2,3,4].forEach(i => {
+    const el = document.getElementById(`pin-${i}`);
+    el.addEventListener('input', (e) => {
+        if (e.target.value.length === 1 && i < 4) {
+            document.getElementById(`pin-${i+1}`).focus();
+        }
+    });
+    el.addEventListener('keydown', (e) => {
+        if (e.key === 'Backspace' && e.target.value === '' && i > 1) {
+            document.getElementById(`pin-${i-1}`).focus();
+        }
+    });
 });
 
 // -- RE-LOGIN CHECK --

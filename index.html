@@ -20,7 +20,17 @@
                 <div class="input-group">
                     <input type="text" id="username-input" placeholder="Tu nombre de MC / Poeta" maxlength="15" autocomplete="off" />
                     
-                    <button id="login-btn" class="primary-btn">Entrar</button>
+                    <div id="pin-section" class="hidden" style="margin-top: 1rem;">
+                        <p id="pin-label" style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.5rem;">Crea tu PIN de 4 dígitos:</p>
+                        <div class="pin-inputs">
+                            <input type="password" id="pin-1" maxlength="1" pattern="\d*" inputmode="numeric">
+                            <input type="password" id="pin-2" maxlength="1" pattern="\d*" inputmode="numeric">
+                            <input type="password" id="pin-3" maxlength="1" pattern="\d*" inputmode="numeric">
+                            <input type="password" id="pin-4" maxlength="1" pattern="\d*" inputmode="numeric">
+                        </div>
+                    </div>
+
+                    <button id="login-btn" class="primary-btn" style="margin-top: 1.5rem;">Entrar</button>
                     <div id="login-error" class="error-text"></div>
                 </div>
             </div>

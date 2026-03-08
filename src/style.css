@@ -1032,6 +1032,35 @@ textarea {
     100% { opacity: 1; transform: scaleY(1.2); }
 }
 
+/* PIN Styles */
+.pin-inputs {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 0.5rem;
+}
+
+.pin-inputs input {
+    width: 45px;
+    height: 55px;
+    text-align: center;
+    font-size: 1.5rem;
+    font-weight: bold;
+    background: rgba(255, 255, 255, 0.05);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    color: var(--secondary-color);
+    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.pin-inputs input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    background: rgba(124, 58, 237, 0.1);
+    transform: scale(1.1);
+    box-shadow: 0 0 15px rgba(124, 58, 237, 0.3);
+}
+
 .sp-earned-badge {
     text-align: center;
     background: rgba(16, 185, 129, 0.2);

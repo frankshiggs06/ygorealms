@@ -181,19 +181,8 @@ export async function getUserProfile(username) {
     const snap = await get(userRef);
     if (snap.exists()) {
         return snap.val();
-    } else {
-        // Create default profile
-        const defaultProfile = {
-            username: username,
-            skillPoints: 100, // Starts with 100 for trying the shop
-            inventory: {
-                "food1": 0, "food2": 0, "water1": 0, "water2": 0, "health1":0, "acc1": 0, "acc2": 0
-            },
-            pet: null // No pet initially
-        };
-        await set(userRef, defaultProfile);
-        return defaultProfile;
     }
+    return null;
 }
 
 export async function updateUserProfile(username, dataUpdates) {
