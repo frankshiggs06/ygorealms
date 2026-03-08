@@ -364,17 +364,34 @@ async function buyItem(item) {
     if (appState.profile.skillPoints < item.cost) return;
     
     appState.profile.skillPoints -= item.cost;
-    appState.profile.inventory[item.id] = (appState.profile.inventory[item.id] || 0) + 1;
     
-    document.getElementById('shop-navbar-sp').innerText = appState.profile.skillPoints;
-    document.getElementById('navbar-sp').innerText = appState.profile.skillPoints; // Update main menu too
-    
-    await updateUserProfile(appState.username, {
+    const updates = {
         skillPoints: appState.profile.skillPoints,
         inventory: appState.profile.inventory
-    });
+    };
+
+    if (item.type === 'adoption') {
+        const petDef = PETS_DATA.find(p => p.id === item.effect.value);
+        const newPet = {
+            id: petDef.id,
+            hunger: 100, thirst: 100, health: 100,
+            adoptedAt: Date.now(),
+            lastInteraction: Date.now()
+        };
+        appState.profile.pet = newPet;
+        updates.pet = newPet;
+        alert(`¡Felicidades! Has adoptado a ${petDef.name}.`);
+    } else {
+        appState.profile.inventory[item.id] = (appState.profile.inventory[item.id] || 0) + 1;
+        updates.inventory = appState.profile.inventory;
+    }
     
-    renderShop(); // Refresh buttons
+    document.getElementById('shop-navbar-sp').innerText = appState.profile.skillPoints;
+    if(document.getElementById('navbar-sp')) document.getElementById('navbar-sp').innerText = appState.profile.skillPoints;
+    
+    await updateUserProfile(appState.username, updates);
+    
+    renderShop(); 
 }
 
 function renderPetScreen() {

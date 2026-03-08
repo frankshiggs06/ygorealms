@@ -15,7 +15,30 @@ export const PETS_DATA = [
   { id: "pet12", name: "Serpiente Métrica", type: "snake", hp: 90, atk: 1.4, def: 0.7, svg: `<svg viewBox="0 0 100 100" class="pet-svg"><path d="M20,80 Q50,20 80,80" stroke="#84cc16" stroke-width="15" fill="none" stroke-linecap="round"/><circle cx="35" cy="40" r="20" fill="#84cc16"/><circle cx="28" cy="35" r="4" fill="#ef4444"/><polygon points="20,40 10,40 15,45" fill="#ef4444"/><circle cx="42" cy="35" r="4" fill="#ef4444"/><g class="pencil" transform="translate(45, 45) rotate(120)"><rect width="20" height="4" fill="#0ea5e9"/><polygon points="20,0 20,4 28,2" fill="#fef08a"/></g></svg>` },
   { id: "pet13", name: "Oso Estrofa", type: "bear", hp: 160, atk: 0.8, def: 1.2, svg: `<svg viewBox="0 0 100 100" class="pet-svg"><circle cx="50" cy="60" r="35" fill="#78350f"/><circle cx="25" cy="35" r="12" fill="#78350f"/><circle cx="75" cy="35" r="12" fill="#78350f"/><circle cx="50" cy="65" r="18" fill="#d97706"/><circle cx="40" cy="50" r="4" fill="#000"/><circle cx="60" cy="50" r="4" fill="#000"/><polygon points="45,60 55,60 50,65" fill="#000"/><g class="quill" transform="translate(70, 60) rotate(15)"><path d="M0,25 Q15,10 25,0 Q10,25 -5,20" fill="#fff"/></g></svg>` },
   { id: "pet14", name: "Águila Liríca", type: "eagle", hp: 80, atk: 1.5, def: 0.7, svg: `<svg viewBox="0 0 100 100" class="pet-svg"><circle cx="50" cy="40" r="25" fill="#e2e8f0"/><polygon points="50,45 60,65 40,65" fill="#facc15" transform="rotate(180 50 55)"/><path d="M25,40 C10,30 0,60 30,50" fill="#1e293b"/><path d="M75,40 C90,30 100,60 70,50" fill="#1e293b"/><circle cx="40" cy="35" r="4" fill="#000"/><circle cx="60" cy="35" r="4" fill="#000"/><g class="mic" transform="translate(50, 70) rotate(-45)"><rect x="0" y="0" width="8" height="20" fill="#475569"/><circle cx="4" cy="0" r="8" fill="#cbd5e1"/></g></svg>` },
-  { id: "pet15", name: "Tortuga Prosa", type: "turtle", hp: 180, atk: 0.7, def: 1.5, svg: `<svg viewBox="0 0 100 100" class="pet-svg"><ellipse cx="50" cy="50" rx="35" ry="25" fill="#15803d"/><path d="M20,60 Q10,80 30,70 M80,60 Q90,80 70,70" stroke="#22c55e" stroke-width="10" stroke-linecap="round" fill="none"/><circle cx="85" cy="40" r="12" fill="#22c55e"/><circle cx="82" cy="38" r="3" fill="#000"/><circle cx="88" cy="38" r="3" fill="#000"/><g class="pencil" transform="translate(10, 30) rotate(45)"><rect width="25" height="5" fill="#fb923c"/><polygon points="25,0 25,5 33,2.5" fill="#fed7aa"/></g></svg>` }
+  { id: "pet15", name: "Tortuga Prosa", type: "turtle", hp: 180, atk: 0.7, def: 1.5, svg: `<svg viewBox="0 0 100 100" class="pet-svg"><ellipse cx="50" cy="50" rx="35" ry="25" fill="#15803d"/><path d="M20,60 Q10,80 30,70 M80,60 Q90,80 70,70" stroke="#22c55e" stroke-width="10" stroke-linecap="round" fill="none"/><circle cx="85" cy="40" r="12" fill="#22c55e"/><circle cx="82" cy="38" r="3" fill="#000"/><circle cx="88" cy="38" r="3" fill="#000"/><g class="pencil" transform="translate(10, 30) rotate(45)"><rect width="25" height="5" fill="#fb923c"/><polygon points="25,0 25,5 33,2.5" fill="#fed7aa"/></g></svg>` },
+  { id: "pet16", name: "Capibara Freestyler", type: "capibara", hp: 150, atk: 1.1, def: 1.1, svg: `<svg viewBox="0 0 100 100" class="pet-svg">
+    <!-- Body -->
+    <path d="M20,60 Q20,30 50,30 Q80,30 80,60 Q80,85 50,85 Q20,85 20,60" fill="#a0522d"/>
+    <!-- Head -->
+    <path d="M60,35 Q90,35 90,55 Q90,70 75,70" fill="#a0522d"/>
+    <!-- Ear -->
+    <circle cx="65" cy="35" r="5" fill="#8b4513"/>
+    <!-- Eye -->
+    <circle cx="75" cy="48" r="3" fill="#000"/>
+    <!-- Nose -->
+    <circle cx="88" cy="58" r="4" fill="#000"/>
+    <!-- Uruguayan Flag Bandana -->
+    <path d="M55,30 L75,30 L70,45 L50,45 Z" fill="#fff"/>
+    <rect x="55" y="33" width="20" height="2" fill="#0038a8"/>
+    <rect x="55" y="38" width="18" height="2" fill="#0038a8"/>
+    <rect x="55" y="43" width="16" height="2" fill="#0038a8"/>
+    <circle cx="58" cy="36" r="3" fill="#ffcc00"/>
+    <!-- Mic -->
+    <g transform="translate(30, 70) rotate(-15)">
+      <rect x="0" y="0" width="6" height="15" fill="#334155"/>
+      <circle cx="3" cy="0" r="6" fill="#94a3b8"/>
+    </g>
+  </svg>` }
 ];
 
 export const SHOP_ITEMS = [
@@ -25,7 +48,8 @@ export const SHOP_ITEMS = [
   { id: "water2", name: "Agua de Manantial", type: "water", cost: 25, effect: { attribute: "thirst", amount: 60 }, icon: "🍹", desc: "Restaura 60 de Sed" },
   { id: "health1", name: "Poción Estructural", type: "health", cost: 50, effect: { attribute: "health", amount: 40 }, icon: "💖", desc: "Cura 40 de Vida" },
   { id: "acc1", name: "Pluma Dorada", type: "accessory", cost: 150, effect: null, icon: "✒️", desc: "Accesorio puramente estético" },
-  { id: "acc2", name: "Micrófono de Rubí", type: "accessory", cost: 200, effect: null, icon: "🎤", desc: "Para que tu mascota presuma" }
+  { id: "acc2", name: "Micrófono de Rubí", type: "accessory", cost: 200, effect: null, icon: "🎤", desc: "Para que tu mascota presuma" },
+  { id: "pet_capibara", name: "Adopción: Capibara", type: "adoption", cost: 300, effect: { attribute: "pet", value: "pet16" }, icon: "🐾", desc: "Cambia tu mascota actual por el Capibara Uruguayo" }
 ];
 
 export function calculatePetStats(petData) {
