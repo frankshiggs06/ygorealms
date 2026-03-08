@@ -4,6 +4,7 @@ import { evaluateMetaphor, evaluateFinalMatch, evaluateMemoryRound } from './gro
 import { ParticleSystem } from './particles.js';
 import { PETS_DATA, SHOP_ITEMS, calculatePetStats } from './pets.js';
 
+// Main screen definitions
 const screens = {
   login: document.getElementById('login-screen'),
   menu: document.getElementById('menu-screen'),
@@ -988,15 +989,17 @@ function getHpColor(percent) {
 }
 
 function enterBattleScreen(roomData) {
-    showScreen('battle-screen');
+    showScreen('battle');
     particles.stop();
     appState.isRecapShown = false; 
     document.getElementById('battle-waiting-overlay').classList.add('hidden');
     document.querySelector('.battle-input-area').style.display = 'flex';
     document.getElementById('battle-dialog-text').innerText = "¿Qué figura literaria utilizarás?";
     
-    document.getElementById('battle-round').innerText = `Ronda ${appState.currentRound}`;
-    document.getElementById('battle-word').innerText = `Palabra: ${appState.currentWord}`;
+    const roundEl = document.getElementById('battle-round');
+    if (roundEl) roundEl.innerText = `Ronda ${appState.currentRound}`;
+    const wordEl = document.getElementById('battle-current-word');
+    if (wordEl) wordEl.innerText = `Palabra: ${appState.currentWord}`;
     
     const myPlayer = appState.players.find(p => p.id === appState.userId);
     const oppPlayer = appState.players.find(p => p.id !== appState.userId);
@@ -1063,7 +1066,7 @@ async function enterBattleGradingScreen(roomData) {
 }
 
 async function playBattleResultsAnimation(roomData) {
-    showScreen('battle-screen');
+    showScreen('battle');
     document.getElementById('battle-waiting-overlay').classList.add('hidden');
     document.querySelector('.battle-input-area').style.display = 'none';
     const dialog = document.getElementById('battle-dialog-text');
