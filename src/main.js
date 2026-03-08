@@ -1281,12 +1281,43 @@ function enterBattleScreen(roomData) {
     document.getElementById('my-hp-text').innerText = `${myHp}/${myPetDef.hp}`;
 
     document.getElementById('opp-pet-name').innerText = oppPlayer.name;
-    document.getElementById('opp-pet-visual').innerHTML = oppPetDef.svg;
+    const oppContainer = document.getElementById('opp-pet-visual');
+    const myContainer = document.getElementById('my-pet-visual');
+    
+    oppContainer.innerHTML = oppPetDef.svg;
+    oppContainer.classList.add('idle-float');
+    myContainer.classList.add('idle-float');
+    
     const oppHpPercent = Math.max(0, (roomData[oppPlayer.slot].hp / oppPetDef.hp) * 100);
     const oppHp = Math.ceil(roomData[oppPlayer.slot].hp);
     document.getElementById('opp-hp-fill').style.width = `${oppHpPercent}%`;
     document.getElementById('opp-hp-fill').style.backgroundColor = getHpColor(oppHpPercent);
     document.getElementById('opp-hp-text').innerText = `${oppHp}/${oppPetDef.hp}`;
+    
+    // Process initial scars
+    if (myHpPercent <= 50) {
+        let overlay = myContainer.querySelector('.scar-overlay');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.className = 'scar-overlay';
+            overlay.innerHTML = `<svg viewBox="0 0 100 100" style="width:100%; height:100%; opacity:0.8;"><path d="M20,30 L80,70 M80,30 L20,70 M40,20 L60,80 M60,20 L40,80" stroke="rgba(255,0,0,0.6)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+            myContainer.appendChild(overlay);
+        }
+        overlay.style.opacity = myHpPercent <= 25 ? '1' : '0.6';
+        if (myHpPercent <= 25) overlay.style.filter = "brightness(0.7) contrast(1.5)";
+    }
+    
+    if (oppHpPercent <= 50) {
+        let overlay = oppContainer.querySelector('.scar-overlay');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.className = 'scar-overlay';
+            overlay.innerHTML = `<svg viewBox="0 0 100 100" style="width:100%; height:100%; opacity:0.8;"><path d="M20,30 L80,70 M80,30 L20,70 M40,20 L60,80 M60,20 L40,80" stroke="rgba(255,0,0,0.6)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+            oppContainer.appendChild(overlay);
+        }
+        overlay.style.opacity = oppHpPercent <= 25 ? '1' : '0.6';
+        if (oppHpPercent <= 25) overlay.style.filter = "brightness(0.7) contrast(1.5)";
+    }
     
     const battleInputEl = document.getElementById('battle-input');
     battleInputEl.value = "";
@@ -1431,10 +1462,32 @@ async function playBattleResultsAnimation(roomData) {
         const isMe = roomData[slot].id === appState.userId;
         const fillId = isMe ? 'my-hp-fill' : 'opp-hp-fill';
         const textId = isMe ? 'my-hp-text' : 'opp-hp-text';
+        const container = document.getElementById(isMe ? 'my-pet-visual' : 'opp-pet-visual');
         
         document.getElementById(fillId).style.width = `${percent}%`;
         document.getElementById(fillId).style.backgroundColor = getHpColor(percent);
         document.getElementById(textId).innerText = `${Math.ceil(currentHp)}/${maxHp}`;
+        
+        // Dynamic Scars/Damage Overlay
+        if (container) {
+            let overlay = container.querySelector('.scar-overlay');
+            if (!overlay) {
+                overlay = document.createElement('div');
+                overlay.className = 'scar-overlay';
+                // Generics cross scratches SVG
+                overlay.innerHTML = `<svg viewBox="0 0 100 100" style="width:100%; height:100%; opacity:0.8;"><path d="M20,30 L80,70 M80,30 L20,70 M40,20 L60,80 M60,20 L40,80" stroke="rgba(255,0,0,0.6)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+                container.appendChild(overlay);
+            }
+            if (percent <= 25) {
+                overlay.style.opacity = '1';
+                overlay.style.filter = "brightness(0.7) contrast(1.5)";
+            } else if (percent <= 50) {
+                overlay.style.opacity = '0.6';
+                overlay.style.filter = "none";
+            } else {
+                overlay.style.opacity = '0';
+            }
+        }
     };
     
     const animAttack = async (attacker, defender, damage, maxHpDef, hpTrackerDef, attackerName, feedback, defSlot) => {
@@ -1447,6 +1500,9 @@ async function playBattleResultsAnimation(roomData) {
         
         if (!attContainer || !defContainer) return hpTrackerDef - damage;
 
+        // Ensure idle float is removed during attack
+        attContainer.classList.remove('idle-float');
+
         // Feedback of the attack
         if (feedback) {
             setTimeout(() => {
@@ -1454,18 +1510,51 @@ async function playBattleResultsAnimation(roomData) {
             }, 1000);
         }
 
-        // Attack bump
-        attContainer.style.transform = isMeAtt ? "translate(30px, -30px)" : "translate(-30px, 30px)";
+        // Apply dynamic dash class based on side
+        const attackClass = isMeAtt ? 'anim-attack-right' : 'anim-attack-left';
         
-        await new Promise(r => setTimeout(r, 400));
-        attContainer.style.transform = "translate(0, 0)";
+        // Trigger reflow
+        attContainer.classList.remove(attackClass);
+        void attContainer.offsetWidth;
+        attContainer.classList.add(attackClass);
         
-        // Shake defender
-        defContainer.classList.add('take-damage');
-        setTimeout(() => defContainer.classList.remove('take-damage'), 300);
+        // Wait for strike moment (60% of 500ms = 300ms)
+        await new Promise(r => setTimeout(r, 300));
+        
+        // Spawn Hit Sparks at defender's location
+        const defRect = defContainer.getBoundingClientRect();
+        const mainRect = document.querySelector('.battle-arena').getBoundingClientRect();
+        
+        const centerX = defRect.left - mainRect.left + (defRect.width / 2);
+        const centerY = defRect.top - mainRect.top + (defRect.height / 2);
+        
+        for (let i = 0; i < 15; i++) {
+            const spark = document.createElement('div');
+            spark.className = 'hit-spark';
+            spark.style.left = `${centerX}px`;
+            spark.style.top = `${centerY}px`;
+            
+            // Random expanding angle and distance
+            const angle = Math.random() * Math.PI * 2;
+            const distance = 40 + Math.random() * 60;
+            spark.style.setProperty('--dx', `${Math.cos(angle) * distance}px`);
+            spark.style.setProperty('--dy', `${Math.sin(angle) * distance}px`);
+            
+            document.querySelector('.battle-arena').appendChild(spark);
+            setTimeout(() => spark.remove(), 600); // Remove after animation
+        }
+        
+        // Shake defender and apply blink
+        defContainer.classList.add('take-damage', 'anim-damage');
+        setTimeout(() => defContainer.classList.remove('take-damage', 'anim-damage'), 400);
         
         const newHp = Math.max(0, hpTrackerDef - damage);
         updateHpBar(defSlot, newHp, maxHpDef);
+        
+        // Wait remainder of animation
+        await new Promise(r => setTimeout(r, 200));
+        attContainer.classList.remove(attackClass);
+        attContainer.classList.add('idle-float');
         
         await new Promise(r => setTimeout(r, 2000)); // 2 seconds to read feedback
         return newHp;
