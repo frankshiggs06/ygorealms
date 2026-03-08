@@ -259,9 +259,9 @@ modeRetoBtn.addEventListener('click', async () => {
 
         listenToMatch(roomId, handleMatchStateChange);
     } catch (e) {
-        console.error(e);
-        alert("Error de conexión");
-        showScreen('login');
+        console.error("Matchmaking Error (Reto):", e);
+        alert("Error de conexión: " + e.message);
+        showScreen('menu');
     }
 });
 
@@ -275,7 +275,8 @@ modeBatallaBtn.addEventListener('click', async () => {
     appState.roundTime = parseInt(waitTimeSelect.value);
     appState.playersCount = 2; // Forced to 2 players for battles
     
-    lobbyUsername.innerText = appState.username + " y " + appState.profile.pet.id;
+    const myPetDef = PETS_DATA.find(p => p.id === appState.profile.pet.id) || { name: "Desconocido" };
+    lobbyUsername.innerText = appState.username + " & " + myPetDef.name;
     showScreen('lobby');
     
     try {
@@ -287,9 +288,9 @@ modeBatallaBtn.addEventListener('click', async () => {
 
         listenToMatch(roomId, handleMatchStateChange);
     } catch (e) {
-        console.error(e);
-        alert("Error de conexión");
-        showScreen('login');
+        console.error("Matchmaking Error (Batalla):", e);
+        alert("Error de conexión: " + e.message);
+        showScreen('menu');
     }
 });
 
@@ -1096,18 +1097,22 @@ async function playBattleResultsAnimation(roomData) {
         const attContainer = document.getElementById(isMeAtt ? 'my-pet-visual' : 'opp-pet-visual');
         const defContainer = document.getElementById(!isMeAtt ? 'my-pet-visual' : 'opp-pet-visual');
         
+        if (!attContainer || !defContainer) return hpTrackerDef - damage;
+
         // Attack bump
         attContainer.style.transform = isMeAtt ? "translate(30px, -30px)" : "translate(-30px, 30px)";
-        await new Promise(r => setTimeout(r, 300));
+        
+        await new Promise(r => setTimeout(r, 400));
         attContainer.style.transform = "translate(0, 0)";
         
-        // Damage blink
-        defContainer.classList.add('damage-blink');
-        setTimeout(() => defContainer.classList.remove('damage-blink'), 500);
+        // Shake defender
+        defContainer.classList.add('take-damage');
+        setTimeout(() => defContainer.classList.remove('take-damage'), 300);
         
-        let newHp = Math.max(0, hpTrackerDef - damage);
-        updateHpBar(defender.id === roomData["player1"].id ? "player1" : "player2", newHp, maxHpDef);
-        await new Promise(r => setTimeout(r, 1500));
+        const newHp = Math.max(0, hpTrackerDef - damage);
+        updateHpBar(defender.slot, newHp, maxHpDef);
+        
+        await new Promise(r => setTimeout(r, 1000));
         return newHp;
     };
 
@@ -1119,9 +1124,15 @@ async function playBattleResultsAnimation(roomData) {
 
     if (appState.isHost) {
         if (p1HpTracker <= 0 || p2HpTracker <= 0 || appState.currentRound >= 5) {
-            setTimeout(() => { updateMatchStatus(appState.roomId, "finished"); }, 2000);
+            // Wait for animations to finish
+            setTimeout(async () => { 
+                await updateMatchStatus(appState.roomId, "finished"); 
+            }, 3000);
         } else {
-            startNextRound();
+            // Start next round after animations
+            setTimeout(async () => {
+                startNextRound();
+            }, 3000);
         }
     }
 }

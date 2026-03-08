@@ -5,6 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Rhymestrain</title>
     <link rel="stylesheet" href="./src/style.css">
+    <style>
+        @keyframes shake {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            50% { transform: translateX(10px); }
+            75% { transform: translateX(-5px); }
+            100% { transform: translateX(0); }
+        }
+        @keyframes flash-red {
+            0% { filter: brightness(1); }
+            50% { filter: brightness(5) sepia(1) hue-rotate(-50deg); }
+            100% { filter: brightness(1); }
+        }
+        .take-damage { animation: shake 0.3s ease-in-out, flash-red 0.3s ease-in-out; }
+    </style>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700;900&display=swap" rel="stylesheet">
 </head>
 <body>

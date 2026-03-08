@@ -22,78 +22,114 @@ export function setupFirebase() {
 export async function createOrJoinLobby(username, waitTime, playersCount, gameMode, activePet, onMatchFound) {
   const userId = `user_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
   const lobbyKey = `lobby_${gameMode}_${playersCount}`;
-  const lobbyRef = ref(db, lobbyKey);
+  const myLobbyRef = ref(db, `${lobbyKey}/${userId}`);
   
-  const lobbySnap = await get(lobbyRef);
-  let waitingPlayers = lobbySnap.exists() ? lobbySnap.val() : {};
-  
-    // Add myself to waiting list
-    waitingPlayers[userId] = { username, activePet, roomId: null };
-    await set(lobbyRef, waitingPlayers);
-    onDisconnect(ref(db, `${lobbyKey}/${userId}`)).remove();
+  try {
+    // 1. Initial cleanup of potentially stale data (optional but good)
+    // 2. Add myself to the lobby queue
+    await set(myLobbyRef, { 
+        username, 
+        activePet, 
+        roomId: null, 
+        joinedAt: Date.now() 
+    });
+    onDisconnect(myLobbyRef).remove();
 
-    // Check if we reached the required count
-    if (Object.keys(waitingPlayers).length >= playersCount) {
-        const playerIds = Object.keys(waitingPlayers).slice(0, playersCount);
-        const playersData = {};
-        playerIds.forEach((id, index) => {
-            playersData[`player${index + 1}`] = { 
-                id: id, 
-                name: waitingPlayers[id].username, 
-                activePet: waitingPlayers[id].activePet,
-                score: 0, text: "", evalScore: 0, feedback: "", hp: waitingPlayers[id].activePet ? waitingPlayers[id].activePet.hp : 100
-            };
-        });
-
-        const roomId = `room_${Date.now()}`;
+    // 3. Continuous check for match
+    return new Promise((resolve, reject) => {
+        const lobbyRef = ref(db, lobbyKey);
         
-        // Signal roomId to all players in this batch
-        const signals = {};
-        for (const id of playerIds) {
-            signals[`${id}/roomId`] = roomId;
-        }
-        await update(lobbyRef, signals);
+        // Timeout if no match found in 60s
+        const matchTimeout = setTimeout(() => {
+            unsubscribeLobby();
+            remove(myLobbyRef);
+            reject(new Error("Timeout: No se encontró oponente en 60 segundos."));
+        }, 60000);
 
-        const roomRef = ref(db, `matches/${roomId}`);
-        await set(roomRef, {
-            ...playersData,
-            playersCount,
-            gameMode,
-            currentRound: 0,
-            status: "starting",
-            word: "",
-            waitTime: waitTime,
-            history: {}
-        });
-
-        onDisconnect(ref(db, `matches/${roomId}/status`)).set("abandoned");
-        
-        // Clean up lobby after signaling
-        setTimeout(async () => {
-            for (const id of playerIds) {
-                remove(ref(db, `${lobbyKey}/${id}`));
+        const unsubscribeLobby = onValue(lobbyRef, async (snapshot) => {
+            if (!snapshot.exists()) return;
+            
+            const players = snapshot.val();
+            const myEntry = players[userId];
+            
+            // If someone (host) already assigned a roomId to me, I'm a joiner
+            if (myEntry && myEntry.roomId) {
+                clearTimeout(matchTimeout);
+                unsubscribeLobby();
+                const roomId = myEntry.roomId;
+                onMatchFound();
+                resolve({ roomId, userId, isHost: false });
+                return;
             }
-        }, 2000);
 
-        onMatchFound();
-        return { roomId, userId, isHost: true };
-    } else {
-        // Wait for match via my own entry
-        return new Promise((resolve) => {
-            const myLobbyEntryRef = ref(db, `${lobbyKey}/${userId}`);
-            const unsubscribe = onValue(myLobbyEntryRef, (snapshot) => {
-                if (!snapshot.exists()) return;
-                const data = snapshot.val();
-                if (data.roomId) {
-                    unsubscribe();
-                    const roomId = data.roomId;
-                    onDisconnect(ref(db, `matches/${roomId}/status`)).set("abandoned");
-                    onMatchFound();
-                    resolve({ roomId, userId, isHost: false });
+            // Host is the oldest player in the required count batch
+            // Filter only valid entries with joinedAt
+            const allPlayerIds = Object.keys(players)
+                .filter(id => players[id] && players[id].joinedAt)
+                .sort((a, b) => players[a].joinedAt - players[b].joinedAt);
+            
+            if (allPlayerIds.length >= playersCount) {
+                const myBatch = allPlayerIds.slice(0, playersCount);
+                if (myBatch.includes(userId) && myBatch[0] === userId) {
+                    // I am the host!
+                    clearTimeout(matchTimeout);
+                    unsubscribeLobby();
+                    
+                    const roomId = `room_${Date.now()}`;
+                    const playersData = {};
+                    const signals = {};
+
+                    myBatch.forEach((id, index) => {
+                        const p = players[id];
+                        playersData[`player${index + 1}`] = {
+                            id: id,
+                            name: p.username,
+                            activePet: p.activePet,
+                            score: 0, text: "", evalScore: 0, feedback: "", 
+                            hp: p.activePet ? (p.activePet.hp || 100) : 100
+                        };
+                        signals[`${id}/roomId`] = roomId;
+                    });
+
+                    try {
+                        // Create room
+                        await set(ref(db, `matches/${roomId}`), {
+                            ...playersData,
+                            playersCount,
+                            gameMode,
+                            currentRound: 0,
+                            status: "starting",
+                            word: "",
+                            waitTime: waitTime,
+                            history: {}
+                        });
+
+                        // Signal to others
+                        await update(lobbyRef, signals);
+                        
+                        // Cleanup lobby entry after signaling
+                        setTimeout(() => {
+                            myBatch.forEach(id => remove(ref(db, `${lobbyKey}/${id}`)));
+                        }, 2000);
+
+                        onMatchFound();
+                        resolve({ roomId, userId, isHost: true });
+                    } catch (err) {
+                        console.error("Host setup failed:", err);
+                        reject(new Error("Error al configurar la sala del host."));
+                    }
                 }
-            });
+            }
+        }, (error) => {
+            clearTimeout(matchTimeout);
+            console.error("Lobby listener error:", error);
+            reject(new Error("Error de conexión con Firebase Realtime Database."));
         });
-    }
+    });
+  } catch (err) {
+    console.error("Join lobby failed:", err);
+    throw new Error("No se pudo conectar a la cola de emparejamiento.");
+  }
 }
 
 export function listenToMatch(roomId, callback) {
