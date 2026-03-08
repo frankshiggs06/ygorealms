@@ -75,12 +75,16 @@ const petBackBtn = document.getElementById('pet-back-btn');
 const shopBackBtn = document.getElementById('shop-back-btn');
 
 function showScreen(screenKey) {
-  Object.values(screens).forEach(s => s.classList.remove('active', 'hidden'));
   Object.keys(screens).forEach(k => {
+    const s = screens[k];
+    if (!s) return; // Safety check
+    
     if (k !== screenKey) {
-        screens[k].classList.add('hidden');
+        s.classList.add('hidden');
+        s.classList.remove('active');
     } else {
-        screens[k].classList.add('active');
+        s.classList.remove('hidden');
+        s.classList.add('active');
     }
   });
 }
