@@ -174,3 +174,39 @@ export async function getWeeklyLeaderboard() {
     arr.sort((a,b) => b.score - a.score);
     return arr;
 }
+
+export async function getUserProfile(username) {
+    const safeName = username.replace(/[\.\#\$\[\]]/g, "_");
+    const userRef = ref(db, `users/${safeName}`);
+    const snap = await get(userRef);
+    if (snap.exists()) {
+        return snap.val();
+    } else {
+        // Create default profile
+        const defaultProfile = {
+            username: username,
+            skillPoints: 100, // Starts with 100 for trying the shop
+            inventory: {
+                "food1": 0, "food2": 0, "water1": 0, "water2": 0, "health1":0, "acc1": 0, "acc2": 0
+            },
+            pet: null // No pet initially
+        };
+        await set(userRef, defaultProfile);
+        return defaultProfile;
+    }
+}
+
+export async function updateUserProfile(username, dataUpdates) {
+    const safeName = username.replace(/[\.\#\$\[\]]/g, "_");
+    const userRef = ref(db, `users/${safeName}`);
+    await update(userRef, dataUpdates);
+}
+
+export async function awardSkillPoints(username, points) {
+    if (points <= 0) return;
+    const safeName = username.replace(/[\.\#\$\[\]]/g, "_");
+    const userRef = ref(db, `users/${safeName}/skillPoints`);
+    const snap = await get(userRef);
+    const currentSp = snap.val() || 0;
+    await set(userRef, currentSp + points);
+}

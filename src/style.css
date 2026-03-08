@@ -912,3 +912,140 @@ textarea {
     background-clip: text;
     -webkit-text-fill-color: transparent;
 }
+
+/* Pet & Shop Additions */
+.shop-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    max-height: 60vh;
+    overflow-y: auto;
+    padding-bottom: 2rem;
+}
+
+.shop-item-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 15px;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    text-align: center;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.shop-item-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(124, 58, 237, 0.3);
+    border-color: var(--primary-color);
+}
+
+.shop-icon {
+    font-size: 2.5rem;
+}
+
+.shop-name {
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: var(--text-main);
+}
+
+.shop-desc {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.shop-btn {
+    margin-top: auto;
+    background: rgba(124, 58, 237, 0.2);
+    border: 1px solid var(--primary-color);
+    color: #fff;
+    padding: 0.5rem 1rem;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: bold;
+    font-family: inherit;
+    transition: background 0.2s;
+}
+
+.shop-btn:hover:not(:disabled) {
+    background: var(--primary-color);
+}
+.shop-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    border-color: #555;
+}
+
+.stat-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.stat-bar-bg {
+    width: 100%;
+    height: 10px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+.stat-bar-fill {
+    height: 100%;
+    transition: width 0.5s ease-out;
+}
+
+/* Base animations for pets */
+.animated-pet-container svg {
+    width: 100%;
+    height: 100%;
+    animation: floatPet 3s infinite ease-in-out;
+}
+
+@keyframes floatPet {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+/* Special SVG Part Animations */
+.pet-svg .mic { animation: rapBounce 0.5s infinite alternate; }
+.pet-svg .pencil { animation: writeShake 0.2s infinite; transform-origin: center; }
+.pet-svg .quill { animation: writeShake 0.3s infinite; transform-origin: center; }
+.pet-svg .fire { animation: fireFlicker 0.1s infinite alternate; }
+
+@keyframes rapBounce {
+    0% { transform: translate(0, 0) scale(1); }
+    100% { transform: translate(3px, -3px) scale(1.1); }
+}
+
+@keyframes writeShake {
+    0% { transform: rotate(-5deg); }
+    50% { transform: rotate(5deg); }
+    100% { transform: rotate(-5deg); }
+}
+
+@keyframes fireFlicker {
+    0% { opacity: 0.8; transform: scaleY(1); }
+    100% { opacity: 1; transform: scaleY(1.2); }
+}
+
+.sp-earned-badge {
+    text-align: center;
+    background: rgba(16, 185, 129, 0.2);
+    border: 1px solid var(--success);
+    color: var(--success);
+    padding: 1rem;
+    border-radius: 15px;
+    margin-bottom: 1rem;
+    font-weight: 900;
+    font-size: 1.5rem;
+    animation: popBadge 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes popBadge {
+    0% { transform: scale(0.5); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+}

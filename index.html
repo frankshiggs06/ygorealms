@@ -28,6 +28,10 @@
 
         <!-- MAIN MENU SCREEN -->
         <section id="menu-screen" class="screen hidden">
+            <div class="top-bar" style="position:absolute; top: 1rem; right: 1rem; font-weight: bold; color: var(--secondary-color); font-size: 1.2rem; display:flex; align-items:center; gap: 5px; z-index: 100;">
+                <svg viewBox="0 0 100 100" width="24" height="24"><g transform="translate(10, 75) rotate(-45)"><rect width="30" height="6" fill="#fbbf24"/><polygon points="30,0 30,6 40,3" fill="#fcd34d"/><polygon points="38,2 38,4 40,3" fill="#000"/></g></svg>
+                <span id="navbar-sp">0</span> SP
+            </div>
             <div class="glow-bg"></div>
             <div class="content">
                 <h1 class="logo">RHYME<br>STRAIN</h1>
@@ -50,6 +54,10 @@
                         </select>
                     </div>
                     <button id="menu-play-btn" class="primary-btn">INICIAR PARTIDA</button>
+                    <div style="display: flex; gap: 10px;">
+                        <button id="menu-pet-btn" class="secondary-btn" style="flex: 1;">PERSONAJE</button>
+                        <button id="menu-shop-btn" class="secondary-btn" style="flex: 1;">TIENDA</button>
+                    </div>
                     <button id="menu-leaderboard-btn" class="secondary-btn">RANKING SEMANAL</button>
                 </div>
             </div>
@@ -180,6 +188,78 @@
                 <button id="back-to-lobby-btn" class="primary-btn" onclick="location.reload()">Volver al Menú</button>
             </div>
         </section>
+
+        <!-- PET SCREEN -->
+        <section id="pet-screen" class="screen hidden">
+            <div class="glow-bg"></div>
+            <div class="top-bar" style="position:absolute; top: 1rem; right: 1rem; font-weight: bold; color: var(--secondary-color); font-size: 1.2rem; display:flex; align-items:center; gap: 5px; z-index: 100;">
+                <svg viewBox="0 0 100 100" width="24" height="24"><g transform="translate(10, 75) rotate(-45)"><rect width="30" height="6" fill="#fbbf24"/><polygon points="30,0 30,6 40,3" fill="#fcd34d"/><polygon points="38,2 38,4 40,3" fill="#000"/></g></svg>
+                <span id="pet-navbar-sp">0</span> SP
+            </div>
+            <button id="pet-back-btn" class="icon-btn" style="position: absolute; top: 1rem; left: 1rem; z-index: 100;">🔙</button>
+            
+            <div class="content" style="padding-top: 2rem;">
+                <h2 class="epic-title" id="pet-title">TU MASCOTA</h2>
+                
+                <div id="pet-selection-panel" class="hidden">
+                    <p style="text-align:center; color: var(--text-muted); margin-bottom: 1rem;">Elige a tu compañero literario inicial:</p>
+                    <div id="pet-grid" class="shop-grid">
+                        <!-- Pets injected via JS -->
+                    </div>
+                </div>
+
+                <div id="pet-active-panel" class="hidden" style="width: 100%;">
+                    <div class="status-card" style="padding: 2rem 1rem;">
+                        <h3 id="active-pet-name" style="color: var(--secondary-color); margin-bottom: 0.5rem; text-align: center;">Name</h3>
+                        <p id="active-pet-age" style="text-align:center; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem;">Edad: 0 hrs</p>
+                        
+                        <div id="active-pet-svg" class="animated-pet-container" style="width: 150px; height: 150px; margin: 0 auto 2rem auto;">
+                            <!-- SVG injected here -->
+                        </div>
+
+                        <div class="stats-container" style="width: 100%; display:flex; flex-direction:column; gap: 0.8rem;">
+                            <!-- Hunger -->
+                            <div class="stat-row">
+                                <span style="font-size: 0.9rem;">Hambre</span>
+                                <div class="stat-bar-bg"><div id="stat-hunger-bar" class="stat-bar-fill" style="width: 100%; background: #f59e0b;"></div></div>
+                            </div>
+                            <!-- Thirst -->
+                            <div class="stat-row">
+                                <span style="font-size: 0.9rem;">Sed</span>
+                                <div class="stat-bar-bg"><div id="stat-thirst-bar" class="stat-bar-fill" style="width: 100%; background: #3b82f6;"></div></div>
+                            </div>
+                            <!-- Health -->
+                            <div class="stat-row">
+                                <span style="font-size: 0.9rem;">Vida</span>
+                                <div class="stat-bar-bg"><div id="stat-health-bar" class="stat-bar-fill" style="width: 100%; background: #ef4444;"></div></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h3 style="margin: 1.5rem 0 0.5rem 0; text-align:center;">Inventario</h3>
+                    <div id="inventory-grid" class="shop-grid" style="grid-template-columns: repeat(3, 1fr);">
+                        <!-- Inventory Items -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SHOP SCREEN -->
+        <section id="shop-screen" class="screen hidden">
+            <div class="glow-bg"></div>
+            <div class="top-bar" style="position:absolute; top: 1rem; right: 1rem; font-weight: bold; color: var(--secondary-color); font-size: 1.2rem; display:flex; align-items:center; gap: 5px; z-index: 100;">
+                <svg viewBox="0 0 100 100" width="24" height="24"><g transform="translate(10, 75) rotate(-45)"><rect width="30" height="6" fill="#fbbf24"/><polygon points="30,0 30,6 40,3" fill="#fcd34d"/><polygon points="38,2 38,4 40,3" fill="#000"/></g></svg>
+                <span id="shop-navbar-sp">0</span> SP
+            </div>
+            <button id="shop-back-btn" class="icon-btn" style="position: absolute; top: 1rem; left: 1rem; z-index: 100;">🔙</button>
+            <div class="content" style="padding-top: 2rem;">
+                <h2 class="epic-title">TIENDA</h2>
+                <div id="shop-items-grid" class="shop-grid">
+                    <!-- Shop Items -->
+                </div>
+            </div>
+        </section>
+
     </div>
     <script type="module" src="./src/main.js"></script>
 </body>

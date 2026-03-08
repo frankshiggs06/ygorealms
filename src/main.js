@@ -1,18 +1,20 @@
-import { setupFirebase, createOrJoinLobby, listenToMatch, updateMatchStatus, submitText, updateScore, updateWeeklyLeaderboard, getWeeklyLeaderboard } from './firebase.js';
+import { setupFirebase, createOrJoinLobby, listenToMatch, updateMatchStatus, submitText, updateScore, updateWeeklyLeaderboard, getWeeklyLeaderboard, getUserProfile, updateUserProfile, awardSkillPoints } from './firebase.js';
 import { getRandomWord } from './words.js';
 import { evaluateMetaphor, evaluateFinalMatch, evaluateMemoryRound } from './groq.js';
 import { ParticleSystem } from './particles.js';
+import { PETS_DATA, SHOP_ITEMS, calculatePetStats } from './pets.js';
 
 const screens = {
   login: document.getElementById('login-screen'),
   menu: document.getElementById('menu-screen'),
   leaderboard: document.getElementById('leaderboard-screen'),
   lobby: document.getElementById('lobby-screen'),
-  game: document.getElementById('game-screen'),
   results: document.getElementById('results-screen'),
   bonus: document.getElementById('bonus-screen'),
   recap: document.getElementById('recap-screen'),
-  end: document.getElementById('end-screen')
+  end: document.getElementById('end-screen'),
+  pet: document.getElementById('pet-screen'),
+  shop: document.getElementById('shop-screen')
 };
 
 const particles = new ParticleSystem('particles-canvas');
@@ -32,9 +34,12 @@ let appState = {
   lastStatus: "",
   lastRound: 0,
   isTimerActive: false,
+  lastRound: 0,
+  isTimerActive: false,
   isRecapShown: false,
   bonusWords: [],
-  hasBonusPlayed: false
+  hasBonusPlayed: false,
+  profile: null // Will hold the whole node from getUserProfile
 };
 
 // Elements
@@ -59,10 +64,15 @@ const playersFoundPanel = document.getElementById('players-found-panel');
 const timerText = document.getElementById('timer-text');
 const timerCircle = document.querySelector('.timer-circle');
 const currentWordEl = document.getElementById('current-word');
-const gameInputEl = document.getElementById('game-input');
 const wordCountEl = document.getElementById('word-count');
 const roundNumberEl = document.getElementById('round-number');
 const waitingOverlay = document.getElementById('waiting-overlay');
+
+// Pet & Shop Elements
+const menuPetBtn = document.getElementById('menu-pet-btn');
+const menuShopBtn = document.getElementById('menu-shop-btn');
+const petBackBtn = document.getElementById('pet-back-btn');
+const shopBackBtn = document.getElementById('shop-back-btn');
 
 function showScreen(screenKey) {
   Object.values(screens).forEach(s => s.classList.remove('active', 'hidden'));
@@ -85,10 +95,28 @@ loginBtn.addEventListener('click', async () => {
         return;
     }
     
-    appState.username = username;
-    menuWelcomeText.innerText = `Bienvenido, ${username}`;
-    showScreen('menu');
-    particles.start();
+    loginBtn.innerText = "Cargando...";
+    loginBtn.disabled = true;
+
+    try {
+        const profile = await getUserProfile(username);
+        appState.profile = profile;
+        appState.username = username;
+        
+        // Update top-right skill points visually (UI elements will be added in HTML)
+        const spEl = document.getElementById('navbar-sp');
+        if(spEl) spEl.innerText = profile.skillPoints;
+
+        menuWelcomeText.innerText = `Bienvenido, ${username}`;
+        showScreen('menu');
+        particles.start();
+    } catch(err) {
+        console.error(err);
+        loginError.innerText = "Error cargando perfil.";
+    } finally {
+        loginBtn.innerText = "Entrar";
+        loginBtn.disabled = false;
+    }
 });
 
 // -- MENU INTERACTIONS --
@@ -146,6 +174,153 @@ menuLeaderboardBtn.addEventListener('click', async () => {
 leaderboardBackBtn.addEventListener('click', () => {
     showScreen('menu');
 });
+
+// -- PET & SHOP INTERACTIONS --
+
+menuShopBtn.addEventListener('click', () => {
+    showScreen('shop');
+    document.getElementById('shop-navbar-sp').innerText = appState.profile.skillPoints;
+    renderShop();
+});
+
+menuPetBtn.addEventListener('click', () => {
+    showScreen('pet');
+    document.getElementById('pet-navbar-sp').innerText = appState.profile.skillPoints;
+    renderPetScreen();
+});
+
+petBackBtn.addEventListener('click', () => showScreen('menu'));
+shopBackBtn.addEventListener('click', () => showScreen('menu'));
+
+function renderShop() {
+    const grid = document.getElementById('shop-items-grid');
+    grid.innerHTML = "";
+    SHOP_ITEMS.forEach(item => {
+        const canAfford = appState.profile.skillPoints >= item.cost;
+        const div = document.createElement('div');
+        div.className = 'shop-item-card';
+        div.innerHTML = `
+            <div class="shop-icon">${item.icon}</div>
+            <div class="shop-name">${item.name}</div>
+            <div class="shop-desc">${item.desc}</div>
+            <button class="shop-btn" ${canAfford ? '' : 'disabled'}>${item.cost} SP</button>
+        `;
+        div.querySelector('.shop-btn').addEventListener('click', () => buyItem(item));
+        grid.appendChild(div);
+    });
+}
+
+async function buyItem(item) {
+    if (appState.profile.skillPoints < item.cost) return;
+    
+    appState.profile.skillPoints -= item.cost;
+    appState.profile.inventory[item.id] = (appState.profile.inventory[item.id] || 0) + 1;
+    
+    document.getElementById('shop-navbar-sp').innerText = appState.profile.skillPoints;
+    document.getElementById('navbar-sp').innerText = appState.profile.skillPoints; // Update main menu too
+    
+    await updateUserProfile(appState.username, {
+        skillPoints: appState.profile.skillPoints,
+        inventory: appState.profile.inventory
+    });
+    
+    renderShop(); // Refresh buttons
+}
+
+function renderPetScreen() {
+    const selPanel = document.getElementById('pet-selection-panel');
+    const actPanel = document.getElementById('pet-active-panel');
+    const petSpEl = document.getElementById('pet-navbar-sp');
+    petSpEl.innerText = appState.profile.skillPoints;
+    
+    if (!appState.profile.pet) {
+        selPanel.classList.remove('hidden');
+        actPanel.classList.add('hidden');
+        
+        const grid = document.getElementById('pet-grid');
+        grid.innerHTML = "";
+        PETS_DATA.forEach(petDef => {
+            const div = document.createElement('div');
+            div.className = 'shop-item-card';
+            div.style.cursor = 'pointer';
+            div.innerHTML = `
+                <div style="width:60px; height:60px;">${petDef.svg}</div>
+                <div class="shop-name">${petDef.name}</div>
+            `;
+            div.addEventListener('click', async () => {
+                const newPet = {
+                    id: petDef.id,
+                    hunger: 100, thirst: 100, health: 100,
+                    adoptedAt: Date.now(),
+                    lastInteraction: Date.now()
+                };
+                appState.profile.pet = newPet;
+                await updateUserProfile(appState.username, { pet: newPet });
+                renderPetScreen();
+            });
+            grid.appendChild(div);
+        });
+    } else {
+        selPanel.classList.add('hidden');
+        actPanel.classList.remove('hidden');
+        
+        const stats = calculatePetStats(appState.profile.pet);
+        const petDef = PETS_DATA.find(p => p.id === stats.id);
+        
+        document.getElementById('active-pet-name').innerText = petDef.name;
+        document.getElementById('active-pet-age').innerText = `Edad: ${stats.ageHours} horas`;
+        document.getElementById('active-pet-svg').innerHTML = petDef.svg;
+        
+        document.getElementById('stat-hunger-bar').style.width = `${stats.hunger}%`;
+        document.getElementById('stat-thirst-bar').style.width = `${stats.thirst}%`;
+        document.getElementById('stat-health-bar').style.width = `${stats.health}%`;
+        
+        // Render Inventory inside pet screen
+        const invGrid = document.getElementById('inventory-grid');
+        invGrid.innerHTML = "";
+        SHOP_ITEMS.forEach(item => {
+            const amount = appState.profile.inventory[item.id] || 0;
+            if (amount > 0) {
+                const div = document.createElement('div');
+                div.className = 'shop-item-card';
+                div.innerHTML = `
+                    <div style="font-size:1.5rem">${item.icon}</div>
+                    <div style="font-size:0.8rem; font-weight:bold;">x${amount}</div>
+                    ${item.type !== 'accessory' ? '<button class="shop-btn" style="padding:0.2rem 0.5rem; font-size:0.8rem; margin-top:5px;">Usar</button>' : '<div style="font-size:0.7rem; color:var(--text-muted); margin-top:5px;">Accesorio</div>'}
+                `;
+                if(item.type !== 'accessory') {
+                    div.querySelector('button').addEventListener('click', () => useItem(item));
+                }
+                invGrid.appendChild(div);
+            }
+        });
+        
+        if (invGrid.innerHTML === "") {
+            invGrid.innerHTML = `<p style="grid-column: 1 / -1; text-align:center; color: var(--text-muted);">Tu inventario está vacío. Ve a la Tienda.</p>`;
+        }
+    }
+}
+
+async function useItem(item) {
+    if ((appState.profile.inventory[item.id] || 0) <= 0 || !appState.profile.pet) return;
+    
+    appState.profile.inventory[item.id] -= 1;
+    
+    const stats = calculatePetStats(appState.profile.pet);
+    if(item.effect) {
+        stats[item.effect.attribute] = Math.min(100, stats[item.effect.attribute] + item.effect.amount);
+    }
+    stats.lastInteraction = Date.now();
+    
+    appState.profile.pet = stats;
+    
+    await updateUserProfile(appState.username, {
+        inventory: appState.profile.inventory,
+        pet: appState.profile.pet
+    });
+    
+    renderPetScreen();
+}
 
 function onGameStartRequested() {
     matchStatus.innerText = "¡Partida lista!";
@@ -555,6 +730,29 @@ async function showEndScreen(roomData) {
     const finalVerdictEl = document.getElementById('match-winner');
     const winner = sortedPlayers[0];
     
+    // Skill Points calculation
+    let earnedSp = 0;
+    if (appState.playersCount === 2) {
+        earnedSp = (appState.userId === winner.id) ? 30 : 5;
+    } else {
+        const myRank = sortedPlayers.findIndex(p => p.id === appState.userId);
+        if (myRank === 0) earnedSp = 50;
+        else if (myRank === 1) earnedSp = 10;
+        else earnedSp = 0;
+    }
+
+    if (earnedSp > 0 && appState.userId) {
+        await awardSkillPoints(appState.username, earnedSp);
+        // We mutate the local profile too to sync it
+        if(appState.profile) appState.profile.skillPoints += earnedSp;
+    }
+    
+    // Inform how much they won visually
+    const spEarnedEl = document.createElement('div');
+    spEarnedEl.className = 'sp-earned-badge';
+    spEarnedEl.innerHTML = `<svg viewBox="0 0 100 100" width="30" height="30" style="display:inline-block; vertical-align:middle; margin-right:5px;"><g transform="translate(10, 75) rotate(-45)"><rect width="30" height="6" fill="#fbbf24"/><polygon points="30,0 30,6 40,3" fill="#fcd34d"/><polygon points="38,2 38,4 40,3" fill="#000"/></g></svg> +${earnedSp} SP`;
+    scoresList.parentElement.insertBefore(spEarnedEl, scoresList);
+
     if (winner.id === appState.userId) {
         finalVerdictEl.innerText = "¡GANASTE!";
         document.querySelector('.glow-bg.victory').style.background = 'radial-gradient(circle, var(--success) 0%, transparent 70%)';
