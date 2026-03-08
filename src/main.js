@@ -1,4 +1,4 @@
-import { setupFirebase, createOrJoinLobby, listenToMatch, updateMatchStatus, submitText, updateScore, updateBattleDamage, updateWeeklyLeaderboard, getWeeklyLeaderboard, getUserProfile, updateUserProfile, awardSkillPoints } from './firebase.js';
+import { setupFirebase, createOrJoinLobby, listenToMatch, updateMatchStatus, submitText, updateScore, updateBattleDamage, updateWeeklyLeaderboard, getWeeklyLeaderboard, getUserProfile, updateUserProfile, awardSkillPoints, setupDisconnectHook, cancelDisconnectHook } from './firebase.js';
 import { getRandomWord } from './words.js';
 import { evaluateMetaphor, evaluateFinalMatch, evaluateMemoryRound } from './groq.js';
 import { ParticleSystem } from './particles.js';
@@ -258,6 +258,7 @@ modeRetoBtn.addEventListener('click', async () => {
         appState.userId = userId;
         appState.isHost = isHost;
 
+        setupDisconnectHook(roomId);
         listenToMatch(roomId, handleMatchStateChange);
     } catch (e) {
         console.error("Matchmaking Error (Reto):", e);
@@ -287,6 +288,7 @@ modeBatallaBtn.addEventListener('click', async () => {
         appState.userId = userId;
         appState.isHost = isHost;
 
+        setupDisconnectHook(roomId);
         listenToMatch(roomId, handleMatchStateChange);
     } catch (e) {
         console.error("Matchmaking Error (Batalla):", e);
@@ -586,7 +588,9 @@ function handleMatchStateChange(roomData) {
             if (roomData.gameMode === "batalla") endBattleScreen(roomData);
             else showEndScreen(roomData);
         } else if (roomData.status === "abandoned") {
-            alert("Un jugador se desconectó");
+            cancelDisconnectHook();
+            alert("Un jugador se desconectó. Has ganado la partida por abandono.\n¡Recibes 50 SP extra!");
+            awardSkillPoints(appState.username, 50);
             showScreen('menu');
         }
     } else if (roomData.status === "results" && roomData.gameMode !== "batalla") {
@@ -1107,9 +1111,10 @@ async function playBattleResultsAnimation(roomData) {
     };
     
     const animAttack = async (attacker, defender, damage, maxHpDef, hpTrackerDef, attackerName, feedback, defSlot) => {
-        dialog.innerText = `¡${attackerName} ataca! (Puntos: ${damage})\n${feedback ? feedback : ''}`;
-        
         const isMeAtt = attacker.id === appState.userId;
+        const finalFeedback = isMeAtt ? (feedback ? `\nTu Evaluación: ${feedback}` : '') : '';
+        dialog.innerText = `¡${attackerName} ataca! (Puntos: ${damage})${finalFeedback}`;
+        
         const attContainer = document.getElementById(isMeAtt ? 'my-pet-visual' : 'opp-pet-visual');
         const defContainer = document.getElementById(!isMeAtt ? 'my-pet-visual' : 'opp-pet-visual');
         
@@ -1160,6 +1165,7 @@ async function playBattleResultsAnimation(roomData) {
 }
 
 async function endBattleScreen(roomData) {
+    cancelDisconnectHook();
     showScreen('end');
     particles.start();
     

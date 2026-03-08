@@ -86,7 +86,7 @@ export async function createOrJoinLobby(username, waitTime, playersCount, gameMo
                             name: p.username,
                             activePet: p.activePet,
                             score: 0, text: "", evalScore: 0, feedback: "", 
-                            hp: p.activePet ? (p.activePet.hp || 100) : 100
+                            hp: p.activePet ? (p.activePet.hp || 40) : 40
                         };
                         signals[`${id}/roomId`] = roomId;
                     });
@@ -140,6 +140,24 @@ export function listenToMatch(roomId, callback) {
 export async function updateMatchStatus(roomId, status, extraData = {}) {
   const roomRef = ref(db, `matches/${roomId}`);
   await update(roomRef, { status, ...extraData });
+}
+
+let currentDisconnectRef = null;
+
+export function setupDisconnectHook(roomId) {
+    if (currentDisconnectRef) {
+        currentDisconnectRef.cancel();
+    }
+    const statusRef = ref(db, `matches/${roomId}/status`);
+    currentDisconnectRef = onDisconnect(statusRef);
+    currentDisconnectRef.set("abandoned");
+}
+
+export function cancelDisconnectHook() {
+    if (currentDisconnectRef) {
+        currentDisconnectRef.cancel();
+        currentDisconnectRef = null;
+    }
 }
 
 export async function submitText(roomId, userId, text) {
