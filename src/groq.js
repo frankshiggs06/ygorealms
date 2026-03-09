@@ -164,3 +164,82 @@ Sé breve (máximo 40 palabras). Da un veredicto épico y declara quién es el '
         return "Una batalla épica de la cual no se pueden expresar palabras.";
     }
 }
+
+export async function evaluateSolitarioStory(wordsInGame, userText) {
+    const apiKey = import.meta.env.VITE_GROQ_API_KEY;
+    
+    if (!userText || userText.trim().length === 0) {
+        return {
+            score: 0,
+            feedback: "No escribiste nada, cero puntos."
+        };
+    }
+
+    if (!apiKey) {
+        return {
+            score: Math.floor(Math.random() * 10) + 1,
+            feedback: "Error: Falta la API Key de Groq. Configura el archivo .env"
+        };
+    }
+
+    const payload = {
+        model: "llama-3.3-70b-versatile",
+        messages: [
+            {
+                role: "system",
+                content: `Eres un estricto juez literario evaluando una historia corta.
+Reglas que el usuario debía seguir:
+1. Usar la mayor cantidad posible de estas palabras (o su campo semántico): ${wordsInGame.join(", ")}.
+2. Escribir una historia coherente y creativa usando figuras literarias.
+3. La longitud debía ser entre 70 y 100 palabras (esto se verificó por UI, pero puedes penalizar si ves que es muy pobre el contenido).
+
+Consideraciones CRÍTICAS:
+- Da hasta 5 puntos por la retención y el uso de las palabras (ya sea de forma literal o conceptual).
+- Da hasta 5 puntos por la creatividad, coherencia y uso de figuras literarias.
+- El puntaje total sumado debe ser un número entero entre 1 y 10.
+- El feedback debe ser MUY ESPECÍFICO criticando o alabando la historia y las palabras recordadas.
+- Máximo 20 palabras para el feedback.
+
+Debes devolver ÚNICAMENTE un objeto JSON válido con este formato exacto:
+{
+  "score": (número del 1 al 10),
+  "feedback": "Tu crítica específica (máximo 20 palabras)"
+}
+NO DEVUELVAS NADA MÁS QUE EL JSON.`
+            },
+            {
+                role: "user",
+                content: `Texto del jugador: "${userText}".`
+            }
+        ],
+        temperature: 0.5,
+        response_format: { type: "json_object" }
+    };
+
+    try {
+        console.log(`Evaluating Solitario Story with Groq...`);
+        const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${apiKey}`
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+            console.error("Groq API Error details");
+            throw new Error(`API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return JSON.parse(data.choices[0].message.content);
+
+    } catch (error) {
+        console.error("Detailed Error evaluating solitario story:", error);
+        return {
+            score: 0,
+            feedback: "La IA tuvo un lapsus literario (error de conexión)."
+        };
+    }
+}

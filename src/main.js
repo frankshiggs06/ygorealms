@@ -260,17 +260,24 @@ async function checkExistingSession() {
 checkExistingSession();
 
 // -- MENU INTERACTIONS --
-const modeSelectionPanel = document.getElementById('mode-selection-panel');
+const modeModalOverlay = document.getElementById('mode-modal-overlay');
+const closeModalBtn = document.getElementById('close-modal-btn');
 const modeRetoBtn = document.getElementById('mode-reto-btn');
 const modeBatallaBtn = document.getElementById('mode-batalla-btn');
+const modeSolitarioBtn = document.getElementById('mode-solitario-btn');
+const waitTimeGroup = document.getElementById('wait-time-group');
 
 menuPlayBtn.addEventListener('click', () => {
-    // Toggle the mode selection panel
-    modeSelectionPanel.classList.toggle('hidden');
+    // Open the epic modal
+    modeModalOverlay.classList.remove('hidden');
+});
+
+closeModalBtn.addEventListener('click', () => {
+    modeModalOverlay.classList.add('hidden');
 });
 
 modeRetoBtn.addEventListener('click', async () => {
-    modeSelectionPanel.classList.add('hidden');
+    modeModalOverlay.classList.add('hidden');
     appState.roundTime = parseInt(waitTimeSelect.value);
     appState.playersCount = parseInt(playerCountSelect.value);
     
@@ -305,7 +312,7 @@ modeBatallaBtn.addEventListener('click', async () => {
         return;
     }
 
-    modeSelectionPanel.classList.add('hidden');
+    modeModalOverlay.classList.add('hidden');
     appState.roundTime = parseInt(waitTimeSelect.value);
     appState.playersCount = 2; // Forced to 2 players for battles
     
@@ -324,6 +331,30 @@ modeBatallaBtn.addEventListener('click', async () => {
         listenToMatch(roomId, handleMatchStateChange);
     } catch (e) {
         console.error("Matchmaking Error (Batalla):", e);
+        alert("Error de conexión: " + e.message);
+        showScreen('menu');
+    }
+});
+
+modeSolitarioBtn.addEventListener('click', async () => {
+    modeModalOverlay.classList.add('hidden');
+    appState.roundTime = 60; // Fixed time for memory mode
+    appState.playersCount = parseInt(playerCountSelect.value); // Support 2 or 3
+    
+    lobbyUsername.innerText = appState.username;
+    showScreen('lobby');
+    
+    try {
+        const { roomId, userId, isHost } = await createOrJoinLobby(appState.username, appState.roundTime, appState.playersCount, "solitario", null, appState.profile.equipment, appState.profile.consumables, onGameStartRequested);
+
+        appState.roomId = roomId;
+        appState.userId = userId;
+        appState.isHost = isHost;
+
+        setupDisconnectHook(roomId);
+        listenToMatch(roomId, handleMatchStateChange);
+    } catch (e) {
+        console.error("Matchmaking Error (Solitario):", e);
         alert("Error de conexión: " + e.message);
         showScreen('menu');
     }
@@ -803,7 +834,13 @@ function handleMatchStateChange(roomData) {
             }
         } else if (roomData.status === "finished") {
             if (roomData.gameMode === "batalla") endBattleScreen(roomData);
+            else if (roomData.gameMode === "solitario") endSolitarioScreen(roomData);
             else showEndScreen(roomData);
+        } else if (roomData.status.startsWith("solitario_")) {
+            if (roomData.status === "solitario_mem") enterSolitarioMemPhase(roomData);
+            else if (roomData.status === "solitario_write") enterSolitarioWritePhase(roomData);
+            else if (roomData.status === "solitario_grading") enterSolitarioGradingPhase(roomData);
+            else if (roomData.status === "solitario_review") enterSolitarioReviewPhase(roomData);
         } else if (roomData.status === "abandoned") {
             cancelDisconnectHook();
             alert("Un jugador se desconectó. Has ganado la partida por abandono.\n¡Recibes 50 SP extra!");
@@ -839,6 +876,19 @@ async function startNextRound() {
         await updateMatchStatus(appState.roomId, "bonus", { bonusWords });
         return;
     }
+    
+    if (appState.gameMode === "solitario" && appState.currentRound === 0) {
+        // Solitario ONLY has one long round.
+        const memWords = [];
+        for(let i=0; i<8; i++) memWords.push(getRandomWord()); // 8 pairs = 16 cards
+        
+        await updateMatchStatus(appState.roomId, "solitario_mem", { 
+            currentRound: 1, 
+            memWords: memWords
+        });
+        return;
+    }
+    
     const nextRound = appState.currentRound + 1;
     const isBattle = appState.gameMode === "batalla";
 
@@ -1647,4 +1697,258 @@ async function endBattleScreen(roomData) {
         appState.isTimerActive = false;
         showScreen('menu');
     };
+}
+
+// --- SOLITARIO (MEMORIA) FUNCTIONS ---
+let localPairsFound = 0;
+let flippedCards = [];
+let actGridDisabled = false;
+
+function enterSolitarioMemPhase(roomData) {
+    showScreen('solitario');
+    document.getElementById('solitario-grid-panel').classList.remove('hidden');
+    document.getElementById('solitario-write-panel').classList.add('hidden');
+    document.getElementById('solitario-review-panel').classList.add('hidden');
+    document.getElementById('solitario-waiting-overlay').classList.add('hidden');
+    
+    localPairsFound = 0;
+    flippedCards = [];
+    actGridDisabled = false;
+    document.getElementById('solitario-pairs-count').innerText = "0";
+    
+    // Generate cards matching array
+    const words = roomData.memWords || [];
+    let deck = [...words, ...words]; // 2 of each
+    deck.sort(() => Math.random() - 0.5); // shuffle
+    
+    const grid = document.getElementById('solitario-memory-grid');
+    grid.innerHTML = "";
+    
+    deck.forEach((word, index) => {
+        const card = document.createElement('div');
+        card.className = 'memory-card';
+        card.dataset.word = word;
+        card.dataset.index = index;
+        card.innerHTML = `
+            <div class="memory-card-inner">
+                <div class="memory-card-front">?</div>
+                <div class="memory-card-back">
+                    <span class="memory-card-text">${word}</span>
+                </div>
+            </div>
+        `;
+        
+        card.addEventListener('click', () => handleCardClick(card));
+        grid.appendChild(card);
+    });
+    
+    startSolitarioTimer(60, async () => {
+        if(appState.isHost) {
+            await updateMatchStatus(appState.roomId, "solitario_write");
+        }
+    });
+}
+
+function handleCardClick(card) {
+    if(actGridDisabled || card.classList.contains('flipped') || card.classList.contains('matched')) return;
+    
+    card.classList.add('flipped');
+    flippedCards.push(card);
+    
+    if(flippedCards.length === 2) {
+        actGridDisabled = true;
+        const [c1, c2] = flippedCards;
+        
+        if (c1.dataset.word === c2.dataset.word) {
+            // Match
+            setTimeout(() => {
+                c1.classList.add('matched');
+                c2.classList.add('matched');
+                localPairsFound++;
+                document.getElementById('solitario-pairs-count').innerText = localPairsFound;
+                flippedCards = [];
+                actGridDisabled = false;
+            }, 600);
+        } else {
+            // No match
+            setTimeout(() => {
+                c1.classList.remove('flipped');
+                c2.classList.remove('flipped');
+                flippedCards = [];
+                actGridDisabled = false;
+            }, 1000);
+        }
+    }
+}
+
+function enterSolitarioWritePhase(roomData) {
+    appState.isTimerActive = false;
+    clearInterval(appState.timerInterval);
+    
+    document.getElementById('solitario-grid-panel').classList.add('hidden');
+    document.getElementById('solitario-write-panel').classList.remove('hidden');
+    
+    const inputArea = document.getElementById('solitario-input');
+    const wordCount = document.getElementById('solitario-word-count');
+    inputArea.value = "";
+    inputArea.disabled = false;
+    wordCount.innerText = "0";
+    
+    const countWords = (t) => t.trim().split(/\\s+/).filter(w => w.length > 0).length;
+    
+    // Auto-update word count
+    inputArea.oninput = () => {
+        const c = countWords(inputArea.value);
+        wordCount.innerText = c;
+        if (c < 70 || c > 100) wordCount.style.color = "var(--error)";
+        else wordCount.style.color = "var(--success)";
+    };
+    
+    const doneBtn = document.getElementById('solitario-done-btn');
+    doneBtn.onclick = async () => {
+        const text = inputArea.value.trim();
+        const c = countWords(text);
+        if (c < 70) {
+            alert("Tu historia es muy corta. Mínimo 70 palabras.");
+            return;
+        }
+        if (c > 100) {
+            alert("Tu historia es muy larga. Máximo 100 palabras.");
+            return;
+        }
+        
+        inputArea.disabled = true;
+        doneBtn.disabled = true;
+        
+        document.getElementById('solitario-waiting-overlay').classList.remove('hidden');
+        document.getElementById('solitario-waiting-text').innerText = "Guardando poema...";
+        
+        await submitText(appState.roomId, appState.userId, text);
+        
+        if (appState.isHost) {
+            setTimeout(async () => {
+                await updateMatchStatus(appState.roomId, "solitario_grading");
+            }, 1500);
+        }
+    };
+    
+    startSolitarioTimer(60, () => {
+        if (!inputArea.disabled) {
+            inputArea.value = inputArea.value || "(Sin tiempo)";
+            doneBtn.click();
+        }
+    });
+}
+
+async function enterSolitarioGradingPhase(roomData) {
+    clearInterval(appState.timerInterval);
+    appState.isTimerActive = false;
+    
+    document.getElementById('solitario-write-panel').classList.add('hidden');
+    document.getElementById('solitario-waiting-overlay').classList.remove('hidden');
+    document.getElementById('solitario-waiting-text').innerText = "La IA está evaluando tu composición...";
+    
+    const myPlayer = appState.players.find(p => p.id === appState.userId);
+    let myText = roomData[myPlayer.slot].text;
+    if (!myText) myText = "(Vacio)";
+    
+    try {
+        const memWords = roomData.memWords || [];
+        // Dynamic import because evaluateSolitarioStory in groq.js
+        const { evaluateSolitarioStory } = await import('./groq.js');
+        const aiResult = await evaluateSolitarioStory(memWords, myText);
+        
+        const finalScore = localPairsFound + aiResult.score; // 1 pt per pair + 1-10 for story
+        await updateScore(appState.roomId, myPlayer.slot, finalScore, aiResult.feedback, "SOLITARIO");
+        
+    } catch (e) {
+        console.error("Eval Error:", e);
+        await updateScore(appState.roomId, myPlayer.slot, localPairsFound, "Error al evaluar.", "SOLITARIO");
+    }
+    
+    if (appState.isHost) {
+        setTimeout(async () => {
+            await updateMatchStatus(appState.roomId, "solitario_review");
+        }, 3000);
+    }
+}
+
+function enterSolitarioReviewPhase(roomData) {
+    document.getElementById('solitario-waiting-overlay').classList.add('hidden');
+    document.getElementById('solitario-review-panel').classList.remove('hidden');
+    
+    const container = document.getElementById('solitario-review-texts');
+    container.innerHTML = "";
+    
+    appState.players.forEach(p => {
+        const pData = roomData[p.slot];
+        const div = document.createElement('div');
+        div.className = 'glass-panel';
+        div.style.padding = '1rem';
+        div.style.textAlign = 'left';
+        div.innerHTML = `
+            <h4 style="color: ${p.id === appState.userId ? 'var(--secondary-color)' : 'var(--primary-color)'}">${p.name}</h4>
+            <p style="font-size: 0.95rem; margin-top: 0.5rem; line-height: 1.4; color: #ddd;">${pData.text || "(Texto Vacío)"}</p>
+            <p style="margin-top: 1rem; font-size: 0.85rem; color: #a855f7;">Feedback: ${pData.feedback || "..."}</p>
+            <div style="margin-top: 0.5rem; display: flex; justify-content: space-between; font-weight: bold;">
+                <span style="color: khaki;">Puntos Totales: ${pData.score}</span>
+            </div>
+        `;
+        container.appendChild(div);
+    });
+    
+    const continueBtn = document.getElementById('solitario-continue-btn');
+    const waitingMsg = document.getElementById('solitario-waiting-peer-msg');
+    
+    continueBtn.disabled = false;
+    continueBtn.style.opacity = '1';
+    waitingMsg.classList.add('hidden');
+    
+    // Using updateMatchStatus to mark readiness
+    continueBtn.onclick = async () => {
+        continueBtn.disabled = true;
+        continueBtn.style.opacity = '0.5';
+        waitingMsg.classList.remove('hidden');
+        
+        const mySlot = appState.players.find(p => p.id === appState.userId).slot;
+        await updateMatchStatus(appState.roomId, roomData.status, { [`${mySlot}_ready`]: true });
+    };
+    
+    if (appState.isHost) {
+        // If host, check if everyone is ready
+        let allReady = true;
+        appState.players.forEach(p => {
+            if (!roomData[`${p.slot}_ready`]) allReady = false;
+        });
+        
+        if (allReady) {
+            updateMatchStatus(appState.roomId, "finished");
+        }
+    }
+}
+
+async function endSolitarioScreen(roomData) {
+    showEndScreen(roomData); // We can just reuse showEndScreen for UI and SP assignment.
+}
+
+function startSolitarioTimer(seconds, onEnd) {
+    clearInterval(appState.timerInterval);
+    const textEl = document.getElementById('solitario-timer-text');
+    const circle = document.querySelector('.timer-circle-small');
+    let timeLeft = seconds;
+    textEl.innerText = timeLeft;
+    circle.style.borderColor = "var(--primary-color)";
+    
+    appState.isTimerActive = true;
+    appState.timerInterval = setInterval(() => {
+        timeLeft--;
+        textEl.innerText = timeLeft;
+        if(timeLeft <= 10) circle.style.borderColor = "var(--error)";
+        
+        if (timeLeft <= 0) {
+            clearInterval(appState.timerInterval);
+            appState.isTimerActive = false;
+            onEnd();
+        }
+    }, 1000);
 }
