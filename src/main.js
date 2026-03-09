@@ -727,6 +727,7 @@ function onGameStartRequested() {
 function handleMatchStateChange(roomData) {
     if (!roomData) return;
     
+    appState.roomData = roomData;
     // Determine player list from roomData
     const playerSlots = Object.keys(roomData).filter(k => /^player\d+$/.test(k));
     appState.playersCount = roomData.playersCount || playerSlots.length;
@@ -1086,7 +1087,7 @@ async function startRecapShow(roomData) {
     
     const finalBtn = document.getElementById('show-final-scores-btn');
     finalBtn.classList.add('hidden');
-    finalBtn.innerText = appState.isHost ? "VER RESULTADOS FINALES" : "ESPERANDO AL HOST...";
+    finalBtn.innerText = "CONTINUAR";
 
     for (const rNum of rounds) {
         const round = history[rNum];
@@ -1124,14 +1125,12 @@ async function startRecapShow(roomData) {
     }
 
     finalBtn.classList.remove('hidden');
-    if (!appState.isHost) {
-        finalBtn.disabled = true;
-    }
+    finalBtn.disabled = false;
 }
 
 document.getElementById('show-final-scores-btn').addEventListener('click', () => {
-    if(appState.isHost) {
-        updateMatchStatus(appState.roomId, "finished");
+    if (appState.roomData) {
+        showEndScreen(appState.roomData);
     }
 });
 
