@@ -18,7 +18,8 @@ const screens = {
   end: document.getElementById('end-screen'),
   pet: document.getElementById('pet-screen'),
   shop: document.getElementById('shop-screen'),
-  battle: document.getElementById('battle-screen')
+  battle: document.getElementById('battle-screen'),
+  solitario: document.getElementById('solitario-screen')
 };
 
 const particles = new ParticleSystem('particles-canvas');
