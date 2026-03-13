@@ -86,8 +86,6 @@ const roundNumberEl = document.getElementById('round-number');
 const waitingOverlay = document.getElementById('waiting-overlay');
 
 // Pet & Shop Elements
-const menuPetBtn = document.getElementById('menu-pet-btn');
-const menuShopBtn = document.getElementById('menu-shop-btn');
 const petBackBtn = document.getElementById('pet-back-btn');
 const shopBackBtn = document.getElementById('shop-back-btn');
 
