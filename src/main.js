@@ -1,9 +1,11 @@
 import { setupFirebase, createOrJoinLobby, listenToMatch, updateMatchStatus, submitText, updateScore, updateBattleDamage, updateWeeklyLeaderboard, getWeeklyLeaderboard, getUserProfile, updateUserProfile, awardSkillPoints, setupDisconnectHook, cancelDisconnectHook, healPlayer } from './firebase.js';
 import { getRandomWord } from './words.js';
 import { evaluateMetaphor, evaluateFinalMatch, evaluateMemoryRound } from './groq.js';
+import { petTalkToAI, petThoughtsToAI } from './groq.js';
 import { ParticleSystem } from './particles.js';
 import { PETS_DATA, SHOP_ITEMS, calculatePetStats } from './pets.js';
 import { EQUIPMENT_DATA, CONSUMABLES_DATA } from './items.js';
+import './VirtualWorld.js';
 
 // Main screen definitions
 const screens = {
@@ -19,7 +21,8 @@ const screens = {
   pet: document.getElementById('pet-screen'),
   shop: document.getElementById('shop-screen'),
   battle: document.getElementById('battle-screen'),
-  solitario: document.getElementById('solitario-screen')
+  solitario: document.getElementById('solitario-screen'),
+  virtualWorld: document.getElementById('virtual-world-screen')
 };
 
 const particles = new ParticleSystem('particles-canvas');
@@ -62,6 +65,9 @@ const loginError = document.getElementById('login-error');
 // Menu Elements
 const menuPlayBtn = document.getElementById('menu-play-btn');
 const menuLeaderboardBtn = document.getElementById('menu-leaderboard-btn');
+const menuPetBtn = document.getElementById('menu-pet-btn');
+const menuShopBtn = document.getElementById('menu-shop-btn');
+const menuWorldBtn = document.getElementById('menu-world-btn');
 const menuWelcomeText = document.getElementById('menu-welcome-text');
 const leaderboardBackBtn = document.getElementById('leaderboard-back-btn');
 const leaderboardList = document.getElementById('leaderboard-list');
@@ -394,7 +400,7 @@ leaderboardBackBtn.addEventListener('click', () => {
     showScreen('menu');
 });
 
-// -- PET & SHOP INTERACTIONS --
+// -- PET & SHOP & WORLD INTERACTIONS --
 
 menuShopBtn.addEventListener('click', () => {
     showScreen('shop');
@@ -408,8 +414,105 @@ menuPetBtn.addEventListener('click', () => {
     renderPetScreen();
 });
 
+menuWorldBtn.addEventListener('click', () => {
+    showScreen('virtualWorld');
+    document.getElementById('world-username-hud').innerText = appState.username;
+    // We will initialize the VirtualWorld module here later once it's imported
+    if (window.initVirtualWorld) {
+        window.initVirtualWorld(appState.username, appState.profile.pet);
+    }
+});
+
 petBackBtn.addEventListener('click', () => showScreen('menu'));
 shopBackBtn.addEventListener('click', () => showScreen('menu'));
+document.getElementById('world-back-btn').addEventListener('click', () => {
+    showScreen('menu');
+    if (window.exitVirtualWorld) window.exitVirtualWorld();
+});
+
+// -- PET CHAT UI EVENTS --
+const petChatPanel = document.getElementById('pet-chat-panel');
+const petChatOpenBtn = document.getElementById('pet-chat-open-btn');
+const petChatCloseBtn = document.getElementById('chat-close-btn');
+const chatMsgsContainer = document.getElementById('chat-messages');
+const chatInput = document.getElementById('chat-input');
+const chatSendBtn = document.getElementById('chat-send-btn');
+let currentChatHistory = [];
+
+async function renderChatMessages() {
+    chatMsgsContainer.innerHTML = "";
+    currentChatHistory.forEach(msg => {
+        const div = document.createElement('div');
+        div.className = `chat-message ${msg.sender}`;
+        div.innerHTML = `
+            <div>${msg.content}</div>
+            <div class="chat-meta">${new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+        `;
+        chatMsgsContainer.appendChild(div);
+    });
+    // Scroll to bottom
+    chatMsgsContainer.scrollTop = chatMsgsContainer.scrollHeight;
+}
+
+petChatOpenBtn.addEventListener('click', async () => {
+    petChatPanel.classList.remove('hidden');
+    chatInput.value = "";
+    chatMsgsContainer.innerHTML = '<div style="text-align:center; color:gray;">Cargando chat...</div>';
+    
+    // Load history
+    currentChatHistory = await getPetChatHistory(appState.username);
+    
+    const petName = appState.profile.pet ? PETS_DATA.find(p => p.id === appState.profile.pet.id)?.name : "Mascota";
+    document.getElementById('chat-pet-name').innerText = petName || "Mascota";
+    
+    renderChatMessages();
+});
+
+petChatCloseBtn.addEventListener('click', () => {
+    petChatPanel.classList.add('hidden');
+});
+
+chatSendBtn.addEventListener('click', async () => {
+    const text = chatInput.value.trim();
+    if (!text || !appState.profile.pet) return;
+    
+    // Disable input while processing
+    chatInput.disabled = true;
+    chatSendBtn.disabled = true;
+    chatInput.value = "";
+    
+    // Create User Message
+    const userMsg = { sender: 'user', content: text, timestamp: Date.now() };
+    currentChatHistory.push(userMsg);
+    renderChatMessages();
+    
+    // Show typing indicator
+    const typingInd = document.createElement('div');
+    typingInd.className = 'typing-indicator';
+    typingInd.innerHTML = '<div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>';
+    chatMsgsContainer.appendChild(typingInd);
+    chatMsgsContainer.scrollTop = chatMsgsContainer.scrollHeight;
+    
+    // Call AI
+    const petDef = PETS_DATA.find(p => p.id === appState.profile.pet.id);
+    const aiResponseText = await chatWithPet(petDef, appState.profile.stats, currentChatHistory, text);
+    
+    // Remove typing indicator
+    typingInd.remove();
+    
+    // Add AI Response
+    const aiMsg = { sender: 'pet', content: aiResponseText, timestamp: Date.now() };
+    currentChatHistory.push(aiMsg);
+    renderChatMessages();
+    
+    // Save to Firebase
+    await savePetChatHistory(appState.username, currentChatHistory);
+    
+    // Re-enable input
+    chatInput.disabled = false;
+    chatSendBtn.disabled = false;
+    chatInput.focus();
+});
 
 let currentShopTab = 'food';
 
@@ -1232,13 +1335,30 @@ async function showEndScreen(roomData) {
     const finalVerdictEl = document.getElementById('match-winner');
     const winner = sortedPlayers[0];
     
-    // Skill Points calculation
+    // Skill Points and Lifetime stats calculation
     let earnedSp = 0;
+    
+    // Initialize stats object if missing
+    if (!appState.profile.stats) {
+        appState.profile.stats = { matchesPlayed: 0, matchesWon: 0, battlesWon: 0, battlesLost: 0 };
+    }
+    
     if (appState.playersCount === 2) {
-        earnedSp = (appState.userId === winner.id) ? 300 : 5;
+        if (appState.userId === winner.id) {
+            earnedSp = 300;
+            appState.profile.stats.matchesPlayed++;
+            appState.profile.stats.matchesWon++;
+        } else {
+            earnedSp = 5;
+            appState.profile.stats.matchesPlayed++;
+        }
     } else {
         const myRank = sortedPlayers.findIndex(p => p.id === appState.userId);
-        if (myRank === 0) earnedSp = 300;
+        appState.profile.stats.matchesPlayed++;
+        if (myRank === 0) {
+            earnedSp = 300;
+            appState.profile.stats.matchesWon++;
+        }
         else if (myRank === 1) earnedSp = 50;
         else earnedSp = 0;
     }
@@ -1248,6 +1368,11 @@ async function showEndScreen(roomData) {
         // We mutate the local profile too to sync it
         if(appState.profile) appState.profile.skillPoints += earnedSp;
     }
+    
+    // Save updated stats for non-battle mode
+    await updateUserProfile(appState.username, {
+        stats: appState.profile.stats
+    });
     
     // Inform how much they won visually
     const spEarnedEl = document.createElement('div');
@@ -1681,9 +1806,18 @@ async function endBattleScreen(roomData) {
 
     appState.profile.skillPoints += spReward;
     
+    // Lifetime Stats
+    if (!appState.profile.stats) {
+        appState.profile.stats = { matchesPlayed: 0, matchesWon: 0, battlesWon: 0, battlesLost: 0 };
+    }
+    appState.profile.stats.matchesPlayed++;
+    if (isWinner) appState.profile.stats.battlesWon = (appState.profile.stats.battlesWon || 0) + 1;
+    else appState.profile.stats.battlesLost = (appState.profile.stats.battlesLost || 0) + 1;
+    
     await updateUserProfile(appState.username, {
         skillPoints: appState.profile.skillPoints,
-        pet: appState.profile.pet
+        pet: appState.profile.pet,
+        stats: appState.profile.stats
     });
 
     const backBtn = document.getElementById('back-to-lobby-btn');

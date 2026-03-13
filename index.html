@@ -65,6 +65,7 @@
                         <button id="menu-pet-btn" class="secondary-btn" style="flex: 1;">PERSONAJE</button>
                         <button id="menu-shop-btn" class="secondary-btn" style="flex: 1;">TIENDA</button>
                     </div>
+                    <button id="menu-world-btn" class="secondary-btn" style="border-color: #3b82f6; color: #3b82f6; background: rgba(59, 130, 246, 0.1); box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);">MUNDO VIRTUAL 🌐</button>
                     <button id="menu-leaderboard-btn" class="secondary-btn">RANKING SEMANAL</button>
                 </div>
             </div>
@@ -389,10 +390,13 @@
                             </div>
                         </div>
 
-                        <!-- Overall Multipliers -->
-                        <div style="display:flex; justify-content:space-between; margin-bottom: 1rem; padding: 0.5rem; background: rgba(0,0,0,0.5); border-radius: 10px;">
-                            <div style="color: var(--secondary-color); font-weight: bold; font-size: 0.9rem;">ATK: <span id="stand-atk-total">1.0x</span></div>
-                            <div style="color: #4caf50; font-weight: bold; font-size: 0.9rem;">DEF: <span id="stand-def-total">1.0x</span></div>
+                        <!-- Overall Multipliers and Chat Button -->
+                        <div style="display:flex; justify-content:space-between; margin-bottom: 1rem; padding: 0.5rem; background: rgba(0,0,0,0.5); border-radius: 10px; align-items: center;">
+                            <div>
+                                <div style="color: var(--secondary-color); font-weight: bold; font-size: 0.9rem;">ATK: <span id="stand-atk-total">1.0x</span></div>
+                                <div style="color: #4caf50; font-weight: bold; font-size: 0.9rem;">DEF: <span id="stand-def-total">1.0x</span></div>
+                            </div>
+                            <button id="pet-chat-open-btn" class="primary-btn" style="padding: 0.4rem 1rem; font-size: 0.8rem; border-radius: 8px;">Hablar 💬</button>
                         </div>
 
                         <div class="stats-container" style="width: 100%; display:flex; flex-direction:column; gap: 0.8rem;">
@@ -425,6 +429,25 @@
                     </div>
                 </div>
             </div>
+            <!-- Pet Chat Panel (Overlay inside Pet Screen) -->
+            <div id="pet-chat-panel" class="hidden" style="position: absolute; top:0; left:0; width:100%; height:100%; background: var(--bg-color); z-index: 50; display: flex; flex-direction: column;">
+                <div class="chat-header" style="padding: 1rem; background: rgba(0,0,0,0.4); border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: space-between;">
+                    <h3 id="chat-pet-name" style="color: var(--secondary-color); margin: 0;">Mascota</h3>
+                    <button id="chat-close-btn" class="icon-btn" style="position: static; font-size: 1.2rem;">✖</button>
+                </div>
+                
+                <div id="chat-messages" style="flex: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: 0.8rem;">
+                    <!-- Messages will be injected here -->
+                </div>
+                
+                <div class="chat-input-area" style="padding: 1rem; background: rgba(0,0,0,0.4); border-top: 1px solid rgba(255,255,255,0.1); display: flex; gap: 0.5rem;">
+                    <textarea id="chat-input" placeholder="Escribe un mensaje..." style="flex: 1; height: 45px; min-height: 45px; resize: none; border-radius: 15px; padding: 0.5rem; background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2); font-family: 'Outfit', sans-serif;" maxlength="200"></textarea>
+                    <button id="chat-send-btn" class="primary-btn" style="width: 50px; height: 45px; padding: 0; border-radius: 15px; display: flex; align-items: center; justify-content: center;">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="white"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>
+                    </button>
+                </div>
+            </div>
+
         </section>
 
         <!-- SHOP SCREEN -->
@@ -448,6 +471,42 @@
                     <!-- Shop Items -->
                 </div>
             </div>
+        </section>
+
+        <!-- VIRTUAL WORLD SCREEN -->
+        <section id="virtual-world-screen" class="screen hidden" style="padding: 0; overflow: hidden; background: #000;">
+            <!-- 3D Canvas will be injected or overlaid here, but we can have UI on top -->
+            <button id="world-back-btn" class="icon-btn" style="position: absolute; top: 1rem; left: 1rem; z-index: 100; background: rgba(0,0,0,0.5);">🔙</button>
+            <div class="top-bar" style="position:absolute; top: 1rem; right: 1rem; z-index: 100; pointer-events:none;">
+                <div class="user-badge" id="world-username-hud" style="background: rgba(0,0,0,0.5);">Jugador</div>
+            </div>
+
+            <!-- Interaction Prompt -->
+            <div id="world-interaction-prompt" class="hidden" style="position: absolute; bottom: 20%; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); color: white; padding: 10px 20px; border-radius: 8px; border: 1px solid var(--secondary-color); z-index: 100; pointer-events: none;">
+                Presiona <strong>[E]</strong> para Interactuar
+            </div>
+
+            <!-- Chat Panel for NPCs & World Chat -->
+            <div id="world-chat-panel" class="hidden" style="position: absolute; bottom: 0; left: 0; width: 100%; height: 40%; background: rgba(0,0,0,0.8); z-index: 200; display: flex; flex-direction: column; border-top: 1px solid var(--secondary-color);">
+                <div class="chat-header" style="padding: 0.5rem 1rem; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: space-between;">
+                    <h3 id="world-chat-title" style="color: var(--secondary-color); margin: 0; font-size: 1rem;">Chat</h3>
+                    <button id="world-chat-close-btn" class="icon-btn" style="position: static; font-size: 1rem; padding: 0;">✖</button>
+                </div>
+                
+                <div id="world-chat-messages" style="flex: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: 0.8rem;">
+                    <!-- Messages -->
+                </div>
+                
+                <div class="chat-input-area" style="padding: 0.5rem 1rem; display: flex; gap: 0.5rem; background: rgba(0,0,0,0.5);">
+                    <textarea id="world-chat-input" placeholder="Escribe un mensaje..." style="flex: 1; height: 40px; min-height: 40px; resize: none; border-radius: 8px; padding: 0.5rem; background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2); font-family: 'Outfit', sans-serif;" maxlength="200"></textarea>
+                    <button id="world-chat-send-btn" class="primary-btn" style="width: 40px; height: 40px; padding: 0; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                        <span>➤</span>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- ThreeJS Container -->
+            <div id="world-3d-container" style="position: absolute; top:0; left:0; width:100%; height:100%; z-index: 10;"></div>
         </section>
 
     </div>

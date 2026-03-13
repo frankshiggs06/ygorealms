@@ -243,3 +243,124 @@ NO DEVUELVAS NADA MÁS QUE EL JSON.`
         };
     }
 }
+
+// -- PET CHAT WITH MEMORY --
+export async function chatWithPet(petDef, userStats, chatHistory, userMessage) {
+    const apiKey = import.meta.env.VITE_GROQ_API_KEY;
+    if (!apiKey) return "Error: Falta la API Key de Groq.";
+
+    // Format chat history for the prompt
+    const formattedHistory = chatHistory.map(msg => ({
+        role: msg.sender === 'user' ? 'user' : 'assistant',
+        content: msg.content
+    }));
+
+    // Construct system prompt with pet personality and user memory
+    const systemPrompt = `Eres el compañero mascota en un juego literario de rimas llamado "Rhymes Train".
+Adopta completamente tu personaje:
+- Nombre: ${petDef.name}
+- Tipo/Estilo: ${petDef.type}
+- Especialidad: ${petDef.specialty || 'General'}
+- Tono: Habla de acuerdo a tu tipo y nombre (ej. Si eres de fuego, usa metaforas cálidas; si eres un fantasma, habla con misterio, etc.).
+- Recuerda que eres una pequeña mascota virtual que acompaña al jugador.
+
+ESTADÍSTICAS DEL JUGADOR (MEMORIA RECIENTE Y A LARGO PLAZO):
+- Victorias Totales: ${userStats?.matchesWon || 0}
+- Partidas Jugadas: ${userStats?.matchesPlayed || 0}
+- Batallas Ganadas (Cartas): ${userStats?.battlesWon || 0}
+- Batallas Perdidas (Cartas): ${userStats?.battlesLost || 0}
+- Skill Points (Moneda del juego): ${userStats?.skillPoints || 0}
+
+Instrucciones:
+1. Responde al usuario de forma natural, amigable (o según tu tono) y concisa (máximo 3 o 4 oraciones cortas).
+2. Si el usuario te pregunta por estadísticas, victorias, derrotas, haz referencia a esos datos en la respuesta. Por ejemplo, felicítalo si tiene muchas victorias o anímalo si ha perdido batallas.
+3. Eres consciente de que están dentro del mundo de Rhymes Train.
+4. NUNCA rompas el personaje.`;
+
+    const messages = [
+        { role: "system", content: systemPrompt },
+        ...formattedHistory,
+        { role: "user", content: userMessage }
+    ];
+
+    const payload = {
+        model: "llama-3.3-70b-versatile",
+        messages: messages,
+        temperature: 0.7,
+        max_completion_tokens: 150
+    };
+
+    try {
+        const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${apiKey}`
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) throw new Error("API Error");
+
+        const data = await response.json();
+        return data.choices[0].message.content;
+    } catch (err) {
+        console.error("Pet Chat Error:", err);
+        return "*La mascota te mira confundida, como si algo interfiriera en su mente* (Fallo de conexión).";
+    }
+}
+
+// -- NPC CHAT WITH MEMORY --
+export async function chatWithNPC(npcDef, chatHistory, userMessage) {
+    const apiKey = import.meta.env.VITE_GROQ_API_KEY;
+    if (!apiKey) return "Error: Falta la API Key de Groq.";
+
+    const formattedHistory = chatHistory.map(msg => ({
+        role: msg.sender === 'user' ? 'user' : 'assistant',
+        content: msg.content
+    }));
+
+    const systemPrompt = `Eres un Personaje No Jugable (NPC) en un mundo virtual 3D inspirado en rimas y poesía llamado "Rhymes Train".
+Adopta completamente tu personaje:
+- Nombre: ${npcDef.name}
+- Rol: ${npcDef.role}
+- Personalidad: ${npcDef.personality}
+
+Instrucciones:
+1. Responde al usuario de forma inmersiva y concisa (máximo 3 o 4 oraciones cortas).
+2. Recuerda que estás dentro del Mundo Virtual de Rhymes Train.
+3. Si el usuario te pregunta cosas fuera de contexto, trata de devolver la conversación al juego o responde según tu personalidad.
+4. NUNCA rompas el personaje. Eres código que cobró vida en este mundo.`;
+
+    const messages = [
+        { role: "system", content: systemPrompt },
+        ...formattedHistory,
+        { role: "user", content: userMessage }
+    ];
+
+    const payload = {
+        model: "llama-3.3-70b-versatile",
+        messages: messages,
+        temperature: 0.7,
+        max_completion_tokens: 150
+    };
+
+    try {
+        const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${apiKey}`
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) throw new Error("API Error");
+
+        const data = await response.json();
+        return data.choices[0].message.content;
+    } catch (err) {
+        console.error("NPC Chat Error:", err);
+        return "*El NPC parece estar bugeado temporalmente* (Fallo de conexión).";
+    }
+}

@@ -300,3 +300,72 @@ export async function healPlayer(roomId, playerSlot, healAmount, maxHp) {
     updates[`${playerSlot}/hp`] = newHp;
     await update(roomRef, updates);
 }
+
+// -- PET CHAT HISTORY --
+export async function getPetChatHistory(username) {
+    const safeName = username.replace(/[\.\#\$\[\]]/g, "_");
+    const chatRef = ref(db, `petChat/${safeName}`);
+    const snap = await get(chatRef);
+    if (snap.exists()) {
+        return snap.val();
+    }
+    return [];
+}
+
+export async function savePetChatHistory(username, historyArray) {
+    const safeName = username.replace(/[\.\#\$\[\]]/g, "_");
+    const chatRef = ref(db, `petChat/${safeName}`);
+    await set(chatRef, historyArray);
+}
+
+// -- NPC CHAT HISTORY --
+export async function getNpcChatHistory(username, npcId) {
+    const safeName = username.replace(/[\.\#\$\[\]]/g, "_");
+    const chatRef = ref(db, `npcChat/${npcId}/${safeName}`);
+    const snap = await get(chatRef);
+    if (snap.exists()) {
+        return snap.val();
+    }
+    return [];
+}
+
+export async function saveNpcChatHistory(username, npcId, historyArray) {
+    const safeName = username.replace(/[\.\#\$\[\]]/g, "_");
+    const chatRef = ref(db, `npcChat/${npcId}/${safeName}`);
+    await set(chatRef, historyArray);
+}
+
+// -- VIRTUAL WORLD --
+export function joinVirtualWorld(userId, username, petData) {
+    const worldRef = ref(db, `world/players/${userId}`);
+    set(worldRef, {
+        username: username,
+        pet: petData || null,
+        position: { x: 0, y: 1, z: 0 },
+        rotation: 0,
+        lastActive: Date.now()
+    });
+    // Remove on disconnect
+    onDisconnect(worldRef).remove();
+}
+
+export function updateWorldPosition(userId, x, y, z, rot) {
+    const worldRef = ref(db, `world/players/${userId}`);
+    update(worldRef, {
+        position: { x, y, z },
+        rotation: rot,
+        lastActive: Date.now()
+    });
+}
+
+export function listenToWorldPlayers(callback) {
+    const playersRef = ref(db, `world/players`);
+    return onValue(playersRef, (snapshot) => {
+        callback(snapshot.exists() ? snapshot.val() : {});
+    });
+}
+
+export function leaveVirtualWorld(userId) {
+    const worldRef = ref(db, `world/players/${userId}`);
+    remove(worldRef);
+}
