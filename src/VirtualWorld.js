@@ -135,7 +135,12 @@ function spawnNPCs() {
         mesh.castShadow = true;
         
         scene.add(mesh);
-        npcs.push({ mesh, info });
+        npcs.push({ 
+            mesh, 
+            info,
+            action: 'idle',
+            vy: 0 // Vertical velocity for jumping
+        });
     });
 }
 
@@ -319,6 +324,44 @@ function animate() {
         camera.position.z = playerMesh.position.z + 15;
         camera.lookAt(playerMesh.position);
 
+        // NPC Actions logic
+        npcs.forEach(npc => {
+            if (npc.action === 'follow') {
+                const dx = playerMesh.position.x - npc.mesh.position.x;
+                const dz = playerMesh.position.z - npc.mesh.position.z;
+                const distance = Math.sqrt(dx * dx + dz * dz);
+                
+                // Stop following if too close
+                if (distance > 3) {
+                    // Normalize vector to move them
+                    const moveSpeed = speed * 0.8; // Slightly slower than player
+                    npc.mesh.position.x += (dx / distance) * moveSpeed;
+                    npc.mesh.position.z += (dz / distance) * moveSpeed;
+                    npc.mesh.rotation.y = Math.atan2(dx, dz);
+                }
+            } else if (npc.action === 'suicide') {
+                 // Move towards the edge randomly and then drop
+                 npc.mesh.position.y -= speed;
+                 if (npc.mesh.position.y < -20) {
+                     // Respawn them eventually or let them fall forever
+                     npc.action = 'idle';
+                     npc.mesh.position.set(npc.info.x, 1.5, npc.info.z);
+                 }
+            }
+            
+            // Jump gravity
+            if (npc.mesh.position.y > 1.5 || npc.vy !== 0) {
+                 npc.mesh.position.y += npc.vy;
+                 npc.vy -= 0.05; // Gravity
+                 
+                 // Ground collision
+                 if (npc.mesh.position.y <= 1.5 && npc.action !== 'suicide') {
+                     npc.mesh.position.y = 1.5;
+                     npc.vy = 0;
+                 }
+            }
+        });
+
         // Check distance to NPCs
         if (!isChatOpen) {
             let foundClosest = null;
@@ -475,12 +518,26 @@ async function sendNPCChatMessage(text) {
     msgsContainer.scrollTop = msgsContainer.scrollHeight;
     
     // AI Call
-    const aiResponse = await chatWithNPC(currentInteractableNPC.info, currentChatHistory, text);
+    const aiResponseData = await chatWithNPC(currentInteractableNPC.info, currentChatHistory, text);
+    const aiMessage = aiResponseData.message;
+    const aiAction = aiResponseData.action;
+    
+    // Apply Action
+    if (aiAction) {
+        currentInteractableNPC.action = aiAction;
+        if (aiAction === 'jump') {
+            currentInteractableNPC.vy = 0.5; // Upward velocity
+            currentInteractableNPC.action = 'idle'; // Reset action immediately after jumping
+        }
+        if (aiAction === 'stop') {
+            currentInteractableNPC.action = 'idle';
+        }
+    }
     
     typingInd.remove();
     
     // AI Message
-    currentChatHistory.push({ sender: 'assistant', content: aiResponse, timestamp: Date.now() });
+    currentChatHistory.push({ sender: 'assistant', content: aiMessage, timestamp: Date.now() });
     renderWorldChatMessages();
     
     // Save

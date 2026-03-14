@@ -313,7 +313,7 @@ Instrucciones:
 // -- NPC CHAT WITH MEMORY --
 export async function chatWithNPC(npcDef, chatHistory, userMessage) {
     const apiKey = import.meta.env.VITE_GROQ_API_KEY;
-    if (!apiKey) return "Error: Falta la API Key de Groq.";
+    if (!apiKey) return { message: "Error: Falta la API Key de Groq.", action: "idle" };
 
     const formattedHistory = chatHistory.map(msg => ({
         role: msg.sender === 'user' ? 'user' : 'assistant',
@@ -328,9 +328,22 @@ Adopta completamente tu personaje:
 
 Instrucciones:
 1. Responde al usuario de forma inmersiva y concisa (máximo 3 o 4 oraciones cortas).
-2. Recuerda que estás dentro del Mundo Virtual de Rhymes Train.
-3. Si el usuario te pregunta cosas fuera de contexto, trata de devolver la conversación al juego o responde según tu personalidad.
-4. NUNCA rompas el personaje. Eres código que cobró vida en este mundo.`;
+2. Recuerda que estás dentro del Mundo Virtual de Rhymes Train. Tienes conciencia espacial y del entorno.
+3. El usuario puede pedirte que hagas acciones físicas (como seguirlo, detenerte, saltar, lanzarte al vacío).
+4. Elige una acción de la siguiente lista basada en el contexto de la conversación: "idle", "follow", "stop", "jump", "suicide". 
+    - "idle": Acción por defecto.
+    - "follow": Comienzas a seguir al jugador.
+    - "stop": Dejas de seguir al jugador.
+    - "jump": Das un salto pequeño.
+    - "suicide": Te lanzas al precipicio o desapareces del mundo.
+5. NUNCA rompas el personaje.
+
+Debes devolver ÚNICAMENTE un objeto JSON válido con este formato exacto:
+{
+  "message": "Tu respuesta hablada aquí",
+  "action": "acción_elegida"
+}
+NO DEVUELVAS NADA MÁS QUE EL JSON.`;
 
     const messages = [
         { role: "system", content: systemPrompt },
@@ -342,7 +355,8 @@ Instrucciones:
         model: "llama-3.3-70b-versatile",
         messages: messages,
         temperature: 0.7,
-        max_completion_tokens: 150
+        max_completion_tokens: 150,
+        response_format: { type: "json_object" }
     };
 
     try {
@@ -358,9 +372,10 @@ Instrucciones:
         if (!response.ok) throw new Error("API Error");
 
         const data = await response.json();
-        return data.choices[0].message.content;
+        const result = JSON.parse(data.choices[0].message.content);
+        return result; 
     } catch (err) {
         console.error("NPC Chat Error:", err);
-        return "*El NPC parece estar bugeado temporalmente* (Fallo de conexión).";
+        return { message: "*El NPC parece estar bugeado temporalmente* (Fallo de conexión).", action: "idle" };
     }
 }
