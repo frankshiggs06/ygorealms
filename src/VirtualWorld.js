@@ -350,6 +350,43 @@ function animate() {
     renderer.render(scene, camera);
 }
 
+// -- MULTIPLAYER LOGIC --
+function handleWorldPlayersUpdate(playersData) {
+    if (!scene) return;
+    
+    const currentIds = Object.keys(playersData || {});
+    
+    // Remove disconnected players
+    Object.keys(otherPlayers).forEach(id => {
+        if (!currentIds.includes(id)) {
+            scene.remove(otherPlayers[id]);
+            delete otherPlayers[id];
+        }
+    });
+
+    // Add or update players
+    currentIds.forEach(id => {
+        if (id === myUserId) return; // Skip ourselves
+        
+        const data = playersData[id];
+        const pos = data.position || {x:0, y:1, z:0};
+        
+        if (!otherPlayers[id]) {
+            // New player
+            const mesh = createAvatarMesh(data.pet);
+            mesh.position.set(pos.x, pos.y, pos.z);
+            if (data.rotation !== undefined) mesh.rotation.y = data.rotation;
+            scene.add(mesh);
+            otherPlayers[id] = mesh;
+        } else {
+            // Update existing player
+            const mesh = otherPlayers[id];
+            mesh.position.set(pos.x, pos.y, pos.z);
+            if (data.rotation !== undefined) mesh.rotation.y = data.rotation;
+        }
+    });
+}
+
 // -- CHAT LOGIC --
 function setupChatUI() {
     const chatCloseBtn = document.getElementById('world-chat-close-btn');
